@@ -14,6 +14,9 @@ import SPCChart from '@/components/charts/SPCChart';
 import OutOfControlModal from '@/components/charts/OutOfControlModal';
 import type { OutOfControlDetail } from '@/components/charts/OutOfControlModal';
 import NeuCard from '@/components/ui/NeuCard';
+import NeuButton from '@/components/ui/NeuButton';
+import RecalcularModal from '@/components/RecalcularModal';
+import { isAdminOrAbove } from '@/lib/utils/roles';
 import { formatDateTime, getCpkStatus } from '@/lib/utils/formatters';
 import type {
   Linea,
@@ -23,6 +26,7 @@ import type {
   SPCPoint,
   SPCLimits,
   TipoGrafico,
+  Rol,
 } from '@/types';
 import type { RecalculoWithUser } from './page';
 
@@ -47,6 +51,7 @@ export interface SPCDashboardViewProps {
   lineas: Linea[];
   maquinas: Maquina[];
   recalculos: RecalculoWithUser[];
+  userRol: Rol;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +397,7 @@ export default function SPCDashboardView({
   lineas,
   maquinas,
   recalculos,
+  userRol,
 }: SPCDashboardViewProps) {
   const supabase = useRef(createClient()).current;
 
@@ -405,6 +411,8 @@ export default function SPCDashboardView({
     open: boolean;
     detail: OutOfControlDetail | null;
   }>({ open: false, detail: null });
+  const [recalcularOpen, setRecalcularOpen] = useState(false);
+  const [configVersion, setConfigVersion] = useState(0);
 
   // ── Filter maquinas by selected linea ────────────────────────────────────────
   const maquinasFiltradas = selectedLineaId
@@ -439,7 +447,7 @@ export default function SPCDashboardView({
     return () => {
       cancelled = true;
     };
-  }, [selectedMaquinaId, supabase]);
+  }, [selectedMaquinaId, supabase, configVersion]);
 
   // ── Compute all 3 chart types ────────────────────────────────────────────────
   const n = spcConfig?.tamano_subgrupo ?? 5;
@@ -677,6 +685,16 @@ export default function SPCDashboardView({
                 </>
               )}
             </div>
+          )}
+
+          {/* Recalcular button — admin and above only */}
+          {selectedMaquinaId && isAdminOrAbove(userRol) && (
+            <NeuButton
+              variant="primary"
+              onClick={() => setRecalcularOpen(true)}
+            >
+              Recalcular
+            </NeuButton>
           )}
         </div>
       </NeuCard>
@@ -1214,6 +1232,19 @@ export default function SPCDashboardView({
           </div>
         </NeuCard>
       )}
+
+      {/* ── Recalcular modal ────────────────────────────────────────────────── */}
+      <RecalcularModal
+        isOpen={recalcularOpen}
+        onClose={() => setRecalcularOpen(false)}
+        maquinaId={selectedMaquinaId}
+        piezas={piezas}
+        onSuccess={() => {
+          setRecalcularOpen(false);
+          setSpcConfig(null);
+          setConfigVersion((v) => v + 1);
+        }}
+      />
 
       {/* ── Out of control detail modal ─────────────────────────────────────── */}
       <OutOfControlModal

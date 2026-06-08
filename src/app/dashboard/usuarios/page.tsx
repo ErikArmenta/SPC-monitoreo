@@ -54,6 +54,7 @@ export default async function UsuariosPage() {
         usuarios={(usuarios ?? []) as Profile[]}
         lineas={(lineas ?? []) as Linea[]}
         maquinas={(maquinas ?? []) as Maquina[]}
+        currentUserId={session.user.id}
       />
     </div>
   );

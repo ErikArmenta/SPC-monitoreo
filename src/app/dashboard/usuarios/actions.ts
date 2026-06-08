@@ -114,6 +114,39 @@ export async function updateUser(payload: UpdateUserPayload): Promise<{ error?: 
   return {};
 }
 
+// ─── Eliminar usuario ──────────────────────────────────────────────────────
+
+export async function deleteUser(
+  userId: string,
+  currentUserId: string
+): Promise<{ error?: string }> {
+  try {
+    await requireSuperAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  if (userId === currentUserId) {
+    return { error: 'No puedes eliminarte a ti mismo' };
+  }
+
+  const admin = createAdminClient();
+
+  const { error: profileError } = await admin
+    .from('profiles')
+    .delete()
+    .eq('id', userId);
+
+  if (profileError) return { error: profileError.message };
+
+  const { error: authError } = await admin.auth.admin.deleteUser(userId);
+
+  if (authError) return { error: authError.message };
+
+  revalidatePath('/dashboard/usuarios');
+  return {};
+}
+
 // ─── Toggle activo ─────────────────────────────────────────────────────────
 
 export async function toggleActivo(

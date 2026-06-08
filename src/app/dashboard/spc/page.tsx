@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminOrAbove } from '@/lib/utils/roles';
-import type { Linea, Maquina, SPCRecalculo, Profile } from '@/types';
+import type { Linea, Maquina, SPCRecalculo, Profile, Rol } from '@/types';
 import SPCDashboardView from './SPCDashboardView';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,6 +108,7 @@ export default async function SPCPage() {
       lineas={lineas}
       maquinas={maquinas}
       recalculos={recalculosWithUser}
+      userRol={profileData.rol as Rol}
     />
   );
 }

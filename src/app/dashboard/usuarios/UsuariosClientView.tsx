@@ -5,7 +5,7 @@ import { Profile, Linea, Maquina, Rol } from '@/types';
 import NeuCard from '@/components/ui/NeuCard';
 import NeuButton from '@/components/ui/NeuButton';
 import NeuInput from '@/components/ui/NeuInput';
-import { createUser, updateUser, toggleActivo } from './actions';
+import { createUser, updateUser, toggleActivo, deleteUser } from './actions';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -13,6 +13,7 @@ interface Props {
   usuarios: Profile[];
   lineas: Linea[];
   maquinas: Maquina[];
+  currentUserId: string;
 }
 
 type ModalMode = 'create' | 'edit' | null;
@@ -384,12 +385,15 @@ function UserModal({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function UsuariosClientView({ usuarios, lineas, maquinas }: Props) {
+export default function UsuariosClientView({ usuarios, lineas, maquinas, currentUserId }: Props) {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [localUsers, setLocalUsers] = useState<Profile[]>(usuarios);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string>('');
+  const [deletingUser, setDeletingUser] = useState<Profile | null>(null);
+  const [deleteError, setDeleteError] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const openCreate = () => {
     setEditingUser(null);
@@ -433,6 +437,20 @@ export default function UsuariosClientView({ usuarios, lineas, maquinas }: Props
     // The page will re-render via Next.js revalidation
     // Reset local state to trigger server fetch
     window.location.reload();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    setDeleteError('');
+    const result = await deleteUser(deletingUser.id, currentUserId);
+    setIsDeleting(false);
+    if (result.error) {
+      setDeleteError(result.error);
+    } else {
+      setDeletingUser(null);
+      window.location.reload();
+    }
   };
 
   // Helpers to display names
@@ -561,13 +579,23 @@ export default function UsuariosClientView({ usuarios, lineas, maquinas }: Props
 
                     {/* Acciones */}
                     <td className="px-6 py-4 text-right">
-                      <NeuButton
-                        variant="default"
-                        className="text-xs px-3 py-1.5"
-                        onClick={() => openEdit(user)}
-                      >
-                        Editar
-                      </NeuButton>
+                      <div className="flex items-center justify-end gap-2">
+                        <NeuButton
+                          variant="default"
+                          className="text-xs px-3 py-1.5"
+                          onClick={() => openEdit(user)}
+                        >
+                          Editar
+                        </NeuButton>
+                        {user.id !== currentUserId && (
+                          <button
+                            onClick={() => { setDeleteError(''); setDeletingUser(user); }}
+                            className="text-xs px-3 py-1.5 rounded-[12px] bg-[#e0e5ec] shadow-[3px_3px_6px_#b8bec7,-3px_-3px_6px_#ffffff] text-[#C62828] font-medium hover:shadow-[inset_2px_2px_5px_#b8bec7,inset_-2px_-2px_5px_#ffffff] transition-shadow duration-150"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -586,6 +614,51 @@ export default function UsuariosClientView({ usuarios, lineas, maquinas }: Props
         onClose={closeModal}
         onSuccess={handleSuccess}
       />
+
+      {/* Delete confirmation modal */}
+      {deletingUser !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="absolute inset-0 bg-black/25 backdrop-blur-sm"
+            onClick={() => { if (!isDeleting) setDeletingUser(null); }}
+          />
+          <div className="relative w-full max-w-sm bg-[#e0e5ec] rounded-[24px] shadow-[8px_8px_24px_#b8bec7,-8px_-8px_24px_#ffffff] p-6 flex flex-col gap-5">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Eliminar usuario</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                ¿Estás seguro de eliminar a{' '}
+                <span className="font-semibold text-gray-800">{deletingUser.nombre || deletingUser.email}</span>?
+                Esta acción no se puede deshacer.
+              </p>
+            </div>
+            {deleteError && (
+              <div className="bg-[#F44336]/10 border border-[#F44336]/30 rounded-[12px] px-4 py-3">
+                <p className="text-sm text-[#C62828] font-medium">{deleteError}</p>
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <NeuButton
+                variant="default"
+                onClick={() => setDeletingUser(null)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </NeuButton>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-[12px] bg-[#F44336] text-white text-sm font-semibold shadow-[3px_3px_6px_#b8bec7,-3px_-3px_6px_#ffffff] hover:bg-[#D32F2F] disabled:opacity-50 transition-colors duration-150"
+              >
+                {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
