@@ -14,10 +14,12 @@ import NeuDatePicker from '@/components/ui/NeuDatePicker';
 import SPCChart from '@/components/charts/SPCChart';
 import OutOfControlModal, { type OutOfControlDetail } from '@/components/charts/OutOfControlModal';
 import RecalculoForm from '@/components/forms/RecalculoForm';
+import CambioProcesoModal from '@/components/CambioProcesoModal';
 import { useSPCData } from '@/hooks/useSPCData';
 import { Maquina, Pieza, Rol, SPCPoint } from '@/types';
 import { formatDateTime, formatDuration } from '@/lib/utils/formatters';
 import { canRecalculate } from '@/lib/utils/roles';
+import { exportToCSV } from '@/lib/utils/export';
 
 type ModalLevel = 1 | 2 | 3;
 
@@ -174,9 +176,10 @@ interface Level1ContentProps {
   stats: DayStats;
   loading: boolean;
   onViewSPC: () => void;
+  onOpenCambio: () => void;
 }
 
-function Level1Content({ maquina, stats, loading, onViewSPC }: Level1ContentProps) {
+function Level1Content({ maquina, stats, loading, onViewSPC, onOpenCambio }: Level1ContentProps) {
   return (
     <div className="space-y-4">
       {/* Header: nombre + estado */}
@@ -261,6 +264,29 @@ function Level1Content({ maquina, stats, loading, onViewSPC }: Level1ContentProp
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
         Ver Gráfica SPC
+      </NeuButton>
+
+      {/* Botón Registrar cambio de proceso */}
+      <NeuButton
+        variant="default"
+        onClick={onOpenCambio}
+        className="w-full flex items-center justify-center gap-2 py-2.5"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+        </svg>
+        Registrar cambio de proceso
       </NeuButton>
     </div>
   );
@@ -534,14 +560,41 @@ function PiezaRow({ pieza }: { pieza: Pieza }) {
 
 interface Level3ContentProps {
   maquinaId: string;
+  maquinaNombre: string;
   profileRol: Rol;
   piezasAll: Pieza[];
 }
 
-function Level3Content({ maquinaId, profileRol, piezasAll }: Level3ContentProps) {
+function Level3Content({ maquinaId, maquinaNombre, profileRol, piezasAll }: Level3ContentProps) {
   const [histRange, setHistRange] = useState({ startDate: '', endDate: '' });
 
   const canRecalc = canRecalculate(profileRol);
+
+  function handleExportCSV() {
+    const headers = [
+      'Fecha',
+      'Código Pieza',
+      'Valor Medido',
+      'Estado',
+      'Fuera de Control',
+      'Regla Violada',
+      'Inspector',
+      'Observaciones',
+    ];
+    const rows = filteredPiezas.map((p) => [
+      p.hora_inspeccion,
+      p.codigo_pieza,
+      p.valor_medido,
+      p.estado,
+      p.fuera_de_control ? 'Sí' : 'No',
+      p.regla_violada,
+      p.inspector_id,
+      p.observaciones,
+    ]);
+    const fecha = new Date().toISOString().slice(0, 10);
+    const nombre = maquinaNombre.replace(/\s+/g, '-').toLowerCase();
+    exportToCSV(headers, rows, `historial-${nombre}-${fecha}`);
+  }
 
   const filteredPiezas = piezasAll.filter((p) => {
     if (histRange.startDate) {
@@ -564,7 +617,35 @@ function Level3Content({ maquinaId, profileRol, piezasAll }: Level3ContentProps)
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Historial de Inspecciones
           </p>
-          <NeuDatePicker value={histRange} onChange={setHistRange} />
+          <div className="flex items-center gap-2">
+            <NeuDatePicker value={histRange} onChange={setHistRange} />
+            {filteredPiezas.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                title="Exportar CSV"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold text-gray-600 bg-[#e0e5ec] shadow-[3px_3px_6px_#b8bec7,-3px_-3px_6px_#ffffff] hover:shadow-[1px_1px_3px_#b8bec7,-1px_-1px_3px_#ffffff] active:shadow-[inset_2px_2px_5px_#b8bec7,inset_-2px_-2px_5px_#ffffff] transition-all duration-150 whitespace-nowrap"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Exportar CSV
+              </button>
+            )}
+          </div>
         </div>
 
         {filteredPiezas.length === 0 ? (
@@ -604,6 +685,7 @@ export default function MachineModal({ maquina, profileRol, onClose }: MachineMo
   const [level, setLevel] = useState<ModalLevel>(1);
   const [piezas, setPiezas] = useState<Pieza[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cambioProcesoOpen, setCambioProcesoOpen] = useState(false);
 
   const supabase = useRef(createClient()).current;
 
@@ -645,6 +727,7 @@ export default function MachineModal({ maquina, profileRol, onClose }: MachineMo
           stats={stats}
           loading={loading}
           onViewSPC={() => setLevel(2)}
+          onOpenCambio={() => setCambioProcesoOpen(true)}
         />
       )}
 
@@ -658,8 +741,17 @@ export default function MachineModal({ maquina, profileRol, onClose }: MachineMo
       {level === 3 && (
         <Level3Content
           maquinaId={maquina.id}
+          maquinaNombre={maquina.nombre}
           profileRol={profileRol}
           piezasAll={piezas}
+        />
+      )}
+
+      {cambioProcesoOpen && (
+        <CambioProcesoModal
+          maquinaId={maquina.id}
+          onClose={() => setCambioProcesoOpen(false)}
+          onSaved={() => setCambioProcesoOpen(false)}
         />
       )}
     </NeuModal>

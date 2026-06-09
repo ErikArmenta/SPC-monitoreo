@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { Rol } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useOOCAlerts } from '@/hooks/useOOCAlerts';
 
 // ============================================================
 // Iconos SVG inline (lucide-react compatible)
@@ -99,6 +100,24 @@ function IconSixPack() {
   );
 }
 
+function IconAlarmas() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+function IconConfiguracion() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
 // ============================================================
 // Helpers de presentación
 // ============================================================
@@ -155,6 +174,18 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['super_admin', 'admin', 'supervisor'],
   },
   {
+    href: '/dashboard/alarmas',
+    label: 'Alarmas',
+    icon: <IconAlarmas />,
+    roles: ['super_admin', 'admin', 'supervisor'],
+  },
+  {
+    href: '/dashboard/configuracion',
+    label: 'Configuración',
+    icon: <IconConfiguracion />,
+    roles: ['super_admin', 'admin'],
+  },
+  {
     href: '/dashboard/usuarios',
     label: 'Usuarios',
     icon: <IconUsuarios />,
@@ -188,6 +219,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
   const { profile, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [, startTransition] = useTransition();
+  const { unreadCount } = useOOCAlerts();
 
   const rol: Rol | null = profile?.rol ?? null;
 
@@ -264,6 +296,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {visibleItems.map((item) => {
           const active = isActive(item.href);
+          const isAlarmas = item.href === '/dashboard/alarmas';
+          const showBadge = isAlarmas && unreadCount > 0;
+          const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
           return (
             <Link
               key={item.href}
@@ -280,10 +315,24 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
               )}
               title={collapsed ? item.label : undefined}
             >
-              <span className={cn('flex-shrink-0', active ? 'text-[#1565C0]' : 'text-gray-500')}>
+              <span className={cn('relative flex-shrink-0', active ? 'text-[#1565C0]' : 'text-gray-500')}>
                 {item.icon}
+                {showBadge && collapsed && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 leading-none pointer-events-none">
+                    {badgeLabel}
+                  </span>
+                )}
               </span>
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <>
+                  <span>{item.label}</span>
+                  {showBadge && (
+                    <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full px-1.5 leading-none pointer-events-none">
+                      {badgeLabel}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}

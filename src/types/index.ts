@@ -58,6 +58,8 @@ export interface Pieza {
   fuera_de_control: boolean;
   regla_violada: string | null;
   valores_individuales: number[] | null;
+  turno_id: string | null;
+  caracteristica_id: string | null;
   created_at: string;
 }
 
@@ -70,9 +72,17 @@ export interface SPCConfig {
   lcl: number | null;
   usl: number | null;
   lsl: number | null;
+  target: number | null;
   tamano_subgrupo: number;
   cp: number | null;
   cpk: number | null;
+  reglas_we: {
+    regla1: boolean;
+    regla2: boolean;
+    regla3: boolean;
+    regla4: boolean;
+  } | null;
+  caracteristica_id: string | null;
   updated_at: string;
   updated_by: string | null;
 }
@@ -151,6 +161,43 @@ export interface SPCEvaluationResult {
   pieza: Pieza;
   isOutOfControl: boolean;
   ruleViolated: string | null;
+}
+
+export interface Caracteristica {
+  id: string;
+  maquina_id: string;
+  nombre: string;
+  unidad: string;
+  descripcion: string | null;
+  activa: boolean;
+  orden: number;
+  created_at: string;
+}
+
+export interface Turno {
+  id: string;
+  nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface CambioProceso {
+  id: string;
+  maquina_id: string;
+  tipo: 'herramental' | 'material' | 'operador' | 'ajuste_maquina' | 'mantenimiento' | 'otro';
+  descripcion: string;
+  fecha: string;
+  registrado_por: string | null;
+  created_at: string;
+}
+
+export interface AlarmAcknowledgment {
+  id: string;
+  pieza_id: string;
+  acknowledged_by: string;
+  acknowledged_at: string;
 }
 
 /** Comparativa de valores antes/después de un recálculo */

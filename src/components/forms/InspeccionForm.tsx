@@ -5,10 +5,10 @@
 // Reutilizable en: página /dashboard/captura y modal de máquina
 // ============================================================
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import NeuInput from '@/components/ui/NeuInput'
 import NeuButton from '@/components/ui/NeuButton'
-import type { Maquina } from '@/types'
+import type { Maquina, Caracteristica, Turno } from '@/types'
 
 // ─── Helpers de UI locales ────────────────────────────────────────────────────
 
@@ -107,6 +107,8 @@ export interface InspeccionFormProps {
   selectedMaquinaId: string
   /** Callback cuando el usuario cambia la máquina seleccionada */
   onMaquinaChange: (maquinaId: string) => void
+  /** Lista de características de la máquina seleccionada (opcional) */
+  caracteristicas?: Caracteristica[]
   /** Callback al enviar con éxito — recibe si está fuera de control */
   onSuccess?: (result: { isOutOfControl: boolean; ruleViolated: string | null }) => void
   /** Callback cuando hay un error de envío */
@@ -115,12 +117,36 @@ export interface InspeccionFormProps {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
+// ─── Helper: detectar turno activo según hora actual ─────────────────────────
+
+function detectarTurno(turnos: Turno[]): Turno | null {
+  const now = new Date()
+  const hhmm = now.getHours() * 60 + now.getMinutes()
+
+  for (const turno of turnos) {
+    const [hIni, mIni] = turno.hora_inicio.split(':').map(Number)
+    const [hFin, mFin] = turno.hora_fin.split(':').map(Number)
+    const inicio = hIni * 60 + mIni
+    const fin = hFin * 60 + mFin
+
+    // Turno normal (no cruza medianoche)
+    if (inicio < fin) {
+      if (hhmm >= inicio && hhmm < fin) return turno
+    } else {
+      // Turno nocturno que cruza medianoche (ej: 22:00 → 06:00)
+      if (hhmm >= inicio || hhmm < fin) return turno
+    }
+  }
+  return null
+}
+
 export default function InspeccionForm({
   maquinas,
   maquinasLoading,
   inspectorId,
   selectedMaquinaId,
   onMaquinaChange,
+  caracteristicas,
   onSuccess,
   onError,
 }: InspeccionFormProps) {
@@ -132,6 +158,35 @@ export default function InspeccionForm({
   const [valor5, setValor5] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [selectedCaracteristicaId, setSelectedCaracteristicaId] = useState('')
+  const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null)
+  const [turnoLoading, setTurnoLoading] = useState(true)
+
+  // Fetch turnos al montar y detectar el turno actual
+  useEffect(() => {
+    let cancelled = false
+    async function fetchTurnos() {
+      try {
+        const res = await fetch('/api/turnos')
+        if (!res.ok) return
+        const data: Turno[] = await res.json()
+        if (!cancelled) {
+          setTurnoActivo(detectarTurno(data))
+        }
+      } catch {
+        // silencioso — turno queda null
+      } finally {
+        if (!cancelled) setTurnoLoading(false)
+      }
+    }
+    fetchTurnos()
+    return () => { cancelled = true }
+  }, [])
+
+  // Limpiar característica seleccionada cuando cambia la máquina
+  useEffect(() => {
+    setSelectedCaracteristicaId('')
+  }, [selectedMaquinaId])
 
   const parsedValues = [valor1, valor2, valor3, valor4, valor5].map((v) => parseFloat(v))
   const allValuesValid = parsedValues.every((v) => !isNaN(v) && v !== undefined)
@@ -158,6 +213,8 @@ export default function InspeccionForm({
             valores_individuales: parsedValues,
             inspector_id: inspectorId,
             observaciones: observaciones.trim() || null,
+            caracteristica_id: selectedCaracteristicaId || null,
+            turno_id: turnoActivo?.id ?? null,
           }),
         })
 
@@ -185,7 +242,7 @@ export default function InspeccionForm({
         setSubmitting(false)
       }
     },
-    [inspectorId, selectedMaquinaId, codigoPieza, promedio, parsedValues, observaciones, onSuccess, onError]
+    [inspectorId, selectedMaquinaId, codigoPieza, promedio, parsedValues, observaciones, selectedCaracteristicaId, turnoActivo, onSuccess, onError]
   )
 
   return (
@@ -212,6 +269,43 @@ export default function InspeccionForm({
               options={maquinas.map((m) => ({ id: m.id, label: m.nombre }))}
             />
           )}
+        </div>
+
+        {/* Selector de característica (solo si se pasan características) */}
+        {caracteristicas !== undefined && (
+          <div>
+            <FieldLabel optional>Característica</FieldLabel>
+            <NeuSelect
+              value={selectedCaracteristicaId}
+              onChange={setSelectedCaracteristicaId}
+              disabled={!selectedMaquinaId}
+              placeholder="Selecciona una característica"
+              options={caracteristicas
+                .filter((c) => c.activa)
+                .sort((a, b) => a.orden - b.orden)
+                .map((c) => ({
+                  id: c.id,
+                  label: c.unidad ? `${c.nombre} (${c.unidad})` : c.nombre,
+                }))}
+            />
+          </div>
+        )}
+
+        {/* Turno detectado (solo lectura) */}
+        <div>
+          <FieldLabel>Turno detectado</FieldLabel>
+          <div
+            className="px-4 py-2.5 rounded-[15px] text-sm"
+            style={{ boxShadow: 'inset 4px 4px 8px #b8bec7, inset -4px -4px 8px #ffffff' }}
+          >
+            {turnoLoading ? (
+              <span className="text-gray-400">Detectando turno…</span>
+            ) : turnoActivo ? (
+              <span className="font-medium text-gray-700">{turnoActivo.nombre}</span>
+            ) : (
+              <span className="text-gray-400">Sin turno configurado</span>
+            )}
+          </div>
         </div>
 
         {/* Código de pieza */}

@@ -10,6 +10,8 @@ const ROLE_RESTRICTED: { path: string; allowedRoles: Rol[] }[] = [
   { path: '/dashboard/usuarios', allowedRoles: ['super_admin'] },
   { path: '/dashboard/captura', allowedRoles: ['inspector'] },
   { path: '/dashboard/spc', allowedRoles: ['admin', 'super_admin', 'supervisor'] },
+  { path: '/dashboard/alarmas', allowedRoles: ['admin', 'super_admin', 'supervisor'] },
+  { path: '/dashboard/configuracion', allowedRoles: ['admin', 'super_admin'] },
 ]
 
 export async function middleware(request: NextRequest) {

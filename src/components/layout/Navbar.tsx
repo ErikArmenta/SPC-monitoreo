@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import Breadcrumb from './Breadcrumb';
+import NotificationBell from './NotificationBell';
 
 // ============================================================
 // Icono hamburger
@@ -85,9 +86,12 @@ export default function Navbar({ sidebarOpen, onToggleSidebar }: NavbarProps) {
         <span className="font-semibold text-[#2d3748] text-sm">SPC Tiempo Real</span>
       </div>
 
-      {/* Breadcrumb en mobile (compacto) */}
-      <div className="ml-auto flex-1 min-w-0">
-        <Breadcrumb compact />
+      {/* Breadcrumb + NotificationBell a la derecha */}
+      <div className="ml-auto flex items-center gap-2 min-w-0">
+        <div className="flex-1 min-w-0">
+          <Breadcrumb compact />
+        </div>
+        <NotificationBell />
       </div>
     </header>
   );

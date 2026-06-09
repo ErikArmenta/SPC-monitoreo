@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { Linea, Maquina, Pieza } from '@/types';
+import { Linea, Maquina, Pieza, Turno } from '@/types';
 import EstadisticasView, { EstadisticasViewProps } from './EstadisticasView';
 import { HourlyData } from '@/components/charts/BarChart';
 
@@ -31,6 +31,7 @@ interface PageProps {
   searchParams: {
     linea?: string;
     maquina?: string;
+    turno?: string;
     start_date?: string;
     end_date?: string;
   };
@@ -49,6 +50,7 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
 
   const lineaId = searchParams?.linea ?? '';
   const maquinaId = searchParams?.maquina ?? '';
+  const turnoId = searchParams?.turno ?? '';
   const startDate = searchParams?.start_date ?? '';
   const endDate = searchParams?.end_date ?? '';
 
@@ -68,6 +70,14 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
     .order('numero', { ascending: true });
   const { data: maquinasData } = await maquinasQuery;
   const maquinas: Maquina[] = maquinasData ?? [];
+
+  // Fetch active turnos (for the filter select)
+  const { data: turnosData } = await supabase
+    .from('turnos')
+    .select('*')
+    .eq('activo', true)
+    .order('hora_inicio', { ascending: true });
+  const turnos: Turno[] = turnosData ?? [];
 
   // Counts for stat cards (all, not filtered by date)
   const totalLineasActivas = lineas.length;
@@ -93,6 +103,7 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
       const filters: EstadisticasViewProps['filters'] = {
         lineaId,
         maquinaId,
+        turnoId,
         startDate,
         endDate,
       };
@@ -100,6 +111,7 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
         <EstadisticasView
           lineas={lineas}
           maquinas={maquinas}
+          turnos={turnos}
           totalOk={0}
           totalNoOk={0}
           hourlyData={[]}
@@ -109,6 +121,10 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
         />
       );
     }
+  }
+
+  if (turnoId) {
+    piezasQuery = piezasQuery.eq('turno_id', turnoId);
   }
 
   if (startDate) {
@@ -136,6 +152,7 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
   const filters: EstadisticasViewProps['filters'] = {
     lineaId,
     maquinaId,
+    turnoId,
     startDate,
     endDate,
   };
@@ -144,6 +161,7 @@ export default async function EstadisticasPage({ searchParams }: PageProps) {
     <EstadisticasView
       lineas={lineas}
       maquinas={maquinas}
+      turnos={turnos}
       totalOk={totalOk}
       totalNoOk={totalNoOk}
       hourlyData={hourlyData}

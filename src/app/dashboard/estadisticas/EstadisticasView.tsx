@@ -6,7 +6,8 @@ import NeuCard from '@/components/ui/NeuCard';
 import NeuDatePicker from '@/components/ui/NeuDatePicker';
 import DoughnutChart from '@/components/charts/DoughnutChart';
 import BarChart, { HourlyData } from '@/components/charts/BarChart';
-import { Linea, Maquina } from '@/types';
+import { Linea, Maquina, Turno } from '@/types';
+import { exportToCSV } from '@/lib/utils/export';
 
 // ---------------------------------------------------------------------------
 // Neuomorphic <select>
@@ -103,6 +104,7 @@ function MaquinaIcon() {
 export interface EstadisticasViewProps {
   lineas: Linea[];
   maquinas: Maquina[];
+  turnos: Turno[];
   totalOk: number;
   totalNoOk: number;
   hourlyData: HourlyData[];
@@ -111,6 +113,7 @@ export interface EstadisticasViewProps {
   filters: {
     lineaId: string;
     maquinaId: string;
+    turnoId: string;
     startDate: string;
     endDate: string;
   };
@@ -123,6 +126,7 @@ export interface EstadisticasViewProps {
 export default function EstadisticasView({
   lineas,
   maquinas,
+  turnos,
   totalOk,
   totalNoOk,
   hourlyData,
@@ -165,6 +169,10 @@ export default function EstadisticasView({
     updateParam('maquina', maquinaId);
   }
 
+  function handleTurnoChange(turnoId: string) {
+    updateParam('turno', turnoId);
+  }
+
   function handleDateChange({ startDate, endDate }: { startDate: string; endDate: string }) {
     const params = new URLSearchParams(searchParams.toString());
     if (startDate) params.set('start_date', startDate); else params.delete('start_date');
@@ -175,6 +183,7 @@ export default function EstadisticasView({
   }
 
   const lineasOptions = lineas.map((l) => ({ id: l.id, label: l.nombre }));
+  const turnosOptions = turnos.map((t) => ({ id: t.id, label: t.nombre }));
 
   // only show maquinas from the selected linea
   const maquinasFiltered = filters.lineaId
@@ -184,14 +193,71 @@ export default function EstadisticasView({
 
   const hasData = totalOk + totalNoOk > 0;
 
+  function handleExportCSV() {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Resolve filter labels for the summary block
+    const lineaNombre = filters.lineaId
+      ? (lineas.find((l) => l.id === filters.lineaId)?.nombre ?? filters.lineaId)
+      : 'Todas';
+    const maquinaNombre = filters.maquinaId
+      ? (maquinas.find((m) => m.id === filters.maquinaId)?.nombre ?? filters.maquinaId)
+      : 'Todas';
+    const turnoNombre = filters.turnoId
+      ? (turnos.find((t) => t.id === filters.turnoId)?.nombre ?? filters.turnoId)
+      : 'Todos';
+    const totalPiezas = totalOk + totalNoOk;
+    const pctOk = totalPiezas > 0 ? ((totalOk / totalPiezas) * 100).toFixed(2) : '0.00';
+
+    const headers = ['Hora', 'OK', 'No OK', 'Total', '% OK'];
+
+    const rows: (string | number | null)[][] = hourlyData.map((h) => {
+      const rowTotal = h.ok + h.noOk;
+      const rowPct = rowTotal > 0 ? ((h.ok / rowTotal) * 100).toFixed(2) : '0.00';
+      return [h.hora, h.ok, h.noOk, rowTotal, rowPct];
+    });
+
+    // Summary block rows prepended before data
+    const summaryRows: (string | number | null)[][] = [
+      ['# Resumen de filtros aplicados', '', '', '', ''],
+      ['Línea', lineaNombre, '', '', ''],
+      ['Máquina', maquinaNombre, '', '', ''],
+      ['Turno', turnoNombre, '', '', ''],
+      ['Período inicio', filters.startDate || '—', '', '', ''],
+      ['Período fin', filters.endDate || '—', '', '', ''],
+      ['Total piezas', totalPiezas, '', '', ''],
+      ['OK', totalOk, '', '', ''],
+      ['No OK', totalNoOk, '', '', ''],
+      ['% OK', pctOk, '', '', ''],
+      ['', '', '', '', ''],
+      ['# Detalle por hora', '', '', '', ''],
+    ];
+
+    exportToCSV(headers, [...summaryRows, ...rows], `estadisticas-${today}`);
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Estadísticas Generales</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Resumen de inspecciones y calidad por período
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Estadísticas Generales</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Resumen de inspecciones y calidad por período
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-[#e0e5ec] rounded-[14px] px-4 py-2.5 shadow-[4px_4px_8px_#b8bec7,_-4px_-4px_8px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8bec7,_inset_-3px_-3px_6px_#ffffff] transition-shadow duration-150"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Exportar CSV
+        </button>
       </div>
 
       {/* Filters row */}
@@ -222,6 +288,18 @@ export default function EstadisticasView({
             />
           </div>
 
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Turno
+            </label>
+            <NeuSelect
+              value={filters.turnoId}
+              onChange={handleTurnoChange}
+              placeholder="Todos los turnos"
+              options={turnosOptions}
+            />
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
               Período
@@ -233,7 +311,7 @@ export default function EstadisticasView({
           </div>
 
           {/* Clear filters */}
-          {(filters.lineaId || filters.maquinaId || filters.startDate || filters.endDate) && (
+          {(filters.lineaId || filters.maquinaId || filters.turnoId || filters.startDate || filters.endDate) && (
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-transparent uppercase tracking-wide select-none">
                 &nbsp;

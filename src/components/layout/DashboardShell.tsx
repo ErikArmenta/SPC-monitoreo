@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import NotificationBell from './NotificationBell';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -26,6 +27,11 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
         />
+
+        {/* Desktop top bar — hidden on mobile (Navbar handles mobile) */}
+        <div className="hidden md:flex items-center justify-end px-6 py-2 border-b border-[#c8cfd8]">
+          <NotificationBell />
+        </div>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">

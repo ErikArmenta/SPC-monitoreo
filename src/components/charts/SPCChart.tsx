@@ -12,7 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import type { SPCPoint, SPCLimits, TipoGrafico } from '@/types';
+import type { SPCPoint, SPCLimits, TipoGrafico, CambioProceso } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -23,6 +23,7 @@ export interface SPCChartProps {
   limits: SPCLimits;
   chartType: TipoGrafico;
   onOutOfControlClick?: (point: SPCPoint) => void;
+  cambiosProceso?: CambioProceso[];
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,7 @@ function SPCChart({
   limits,
   chartType,
   onOutOfControlClick,
+  cambiosProceso = [],
 }: SPCChartProps) {
   const sigma = (limits.ucl - limits.cl) / 3;
 
@@ -299,6 +301,23 @@ function SPCChart({
             }}
             activeDot={{ r: 6, fill: '#1565C0', stroke: '#0D47A1' }}
           />
+
+          {/* ── Cambios de proceso ───────────────────────────────── */}
+          {cambiosProceso.map((cambio) => (
+            <ReferenceLine
+              key={cambio.id}
+              x={formatTimestamp(cambio.fecha)}
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              label={{
+                value: cambio.tipo,
+                position: 'top',
+                fontSize: 10,
+                fill: '#f59e0b',
+              }}
+            />
+          ))}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

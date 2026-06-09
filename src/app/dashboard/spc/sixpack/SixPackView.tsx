@@ -10,6 +10,10 @@ import {
   calculateIMR,
 } from '@/lib/spc/calculations';
 import { detectViolations } from '@/lib/spc/western-electric';
+import { exportToCSV } from '@/lib/utils/export';
+import CambioProcesoModal from '@/components/CambioProcesoModal';
+import { getCambiosByMaquina } from '@/app/dashboard/configuracion/cambios-actions';
+import type { CambioProceso } from '@/app/dashboard/configuracion/cambios-actions';
 import {
   calcCapabilityIndices,
   buildHistogramData,
@@ -32,6 +36,8 @@ import type {
   SPCPoint,
   SPCLimits,
   TipoGrafico,
+  Turno,
+  Caracteristica,
 } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,10 +256,48 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
   const [customEnd, setCustomEnd] = useState('');
 
   // ── Data ───────────────────────────────────────────────────────────────────
-  const [piezas, setPiezas] = useState<Pieza[]>([]);
+  const [allPiezas, setAllPiezas] = useState<Pieza[]>([]);
   const [config, setConfig] = useState<SPCConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [cambioProcesoOpen, setCambioProcesoOpen] = useState(false);
+  const [cambiosProceso, setCambiosProceso] = useState<CambioProceso[]>([]);
+
+  // ── Turno / Caracteristica filters ──────────────────────────────────────────
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [selectedTurnoId, setSelectedTurnoId] = useState('');
+  const [caracteristicas, setCaracteristicas] = useState<Caracteristica[]>([]);
+  const [selectedCaracteristicaId, setSelectedCaracteristicaId] = useState('');
+
+  // Fetch turnos once on mount
+  useEffect(() => {
+    supabase
+      .from('turnos')
+      .select('*')
+      .eq('activo', true)
+      .order('hora_inicio', { ascending: true })
+      .then(({ data }) => {
+        if (data) setTurnos(data as Turno[]);
+      });
+  }, [supabase]);
+
+  // Fetch caracteristicas when machine changes
+  useEffect(() => {
+    setSelectedCaracteristicaId('');
+    if (!maquinaId) {
+      setCaracteristicas([]);
+      return;
+    }
+    supabase
+      .from('caracteristicas')
+      .select('*')
+      .eq('maquina_id', maquinaId)
+      .eq('activa', true)
+      .order('orden', { ascending: true })
+      .then(({ data }) => {
+        setCaracteristicas((data as Caracteristica[]) ?? []);
+      });
+  }, [maquinaId, supabase]);
 
   // ── Filtered machines by line ──────────────────────────────────────────────
   const maquinasFiltradas = useMemo(
@@ -269,7 +313,7 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
   // ── Fetch piezas + config ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!maquinaId) {
-      setPiezas([]);
+      setAllPiezas([]);
       setConfig(null);
       return;
     }
@@ -294,7 +338,7 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
           .single(),
       ]);
 
-      setPiezas(piezasRes.data ?? []);
+      setAllPiezas(piezasRes.data ?? []);
       setConfig(configRes.data ?? null);
     } finally {
       setLoading(false);
@@ -304,6 +348,29 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Fetch cambios de proceso when machine changes ────────────────────────────
+  useEffect(() => {
+    if (!maquinaId) {
+      setCambiosProceso([]);
+      return;
+    }
+    getCambiosByMaquina(maquinaId).then(({ data }) => {
+      setCambiosProceso(data);
+    });
+  }, [maquinaId]);
+
+  // ── Apply turno / caracteristica filters ─────────────────────────────────────
+  const piezas = useMemo(() => {
+    let result = allPiezas;
+    if (selectedTurnoId) {
+      result = result.filter((p) => p.turno_id === selectedTurnoId);
+    }
+    if (selectedCaracteristicaId) {
+      result = result.filter((p) => p.caracteristica_id === selectedCaracteristicaId);
+    }
+    return result;
+  }, [allPiezas, selectedTurnoId, selectedCaracteristicaId]);
 
   // ── Computed values ────────────────────────────────────────────────────────
   const values = useMemo(
@@ -401,6 +468,24 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
     }
   }, [maquinaId, maquinas, range, customStart, customEnd]);
 
+  // ── CSV export ─────────────────────────────────────────────────────────────
+  const handleExportCSV = useCallback(() => {
+    if (!spcData) return;
+    const maquina = maquinas.find((m) => m.id === maquinaId);
+    const fechaStr = new Date().toISOString().slice(0, 10);
+    const filename = `sixpack-${maquina?.nombre ?? 'maquina'}-${fechaStr}.csv`;
+    const headers = ['Fecha', 'Valor Medido', 'Media', 'Rango', 'Estado', 'Regla violada'];
+    const rows = spcData.points.map((pt) => [
+      pt.timestamp ? new Date(pt.timestamp).toLocaleString('es-MX') : '',
+      pt.value,
+      pt.subgroupMean,
+      pt.range ?? '',
+      pt.isOutOfControl ? 'NO OK' : 'OK',
+      pt.ruleViolated ?? '',
+    ]);
+    exportToCSV(headers, rows, filename);
+  }, [spcData, maquinaId, maquinas]);
+
   // ── Lineas options ─────────────────────────────────────────────────────────
   const lineaOptions = lineas.map((l) => ({ id: l.id, label: `${l.numero}. ${l.nombre}` }));
   const maquinaOptions = maquinasFiltradas.map((m) => ({ id: m.id, label: `${m.numero}. ${m.nombre}` }));
@@ -448,11 +533,44 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
           </label>
           <NeuSelect
             value={maquinaId}
-            onChange={setMaquinaId}
+            onChange={(id) => {
+              setMaquinaId(id);
+              setSelectedTurnoId('');
+            }}
             placeholder="Seleccionar máquina"
             options={maquinaOptions}
           />
         </div>
+
+        {/* Turno filter */}
+        {maquinaId && turnos.length > 0 && (
+          <div className="flex flex-col gap-1.5 min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Turno
+            </label>
+            <NeuSelect
+              value={selectedTurnoId}
+              onChange={setSelectedTurnoId}
+              placeholder="Todos los turnos"
+              options={turnos.map((t) => ({ id: t.id, label: t.nombre }))}
+            />
+          </div>
+        )}
+
+        {/* Caracteristica filter */}
+        {maquinaId && caracteristicas.length > 0 && (
+          <div className="flex flex-col gap-1.5 min-w-[180px]">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Característica
+            </label>
+            <NeuSelect
+              value={selectedCaracteristicaId}
+              onChange={setSelectedCaracteristicaId}
+              placeholder="Todas"
+              options={caracteristicas.map((c) => ({ id: c.id, label: `${c.nombre} (${c.unidad})` }))}
+            />
+          </div>
+        )}
 
         {/* Range buttons */}
         <div className="flex flex-col gap-1.5">
@@ -509,8 +627,51 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
           </div>
         )}
 
-        {/* Spacer + Export button */}
-        <div className="ml-auto flex items-end">
+        {/* Spacer + Export + Cambio buttons */}
+        <div className="ml-auto flex items-end gap-2">
+          {maquinaId && (
+            <NeuButton
+              variant="default"
+              onClick={() => setCambioProcesoOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+              Registrar cambio
+            </NeuButton>
+          )}
+          <NeuButton
+            variant="default"
+            onClick={handleExportCSV}
+            disabled={!hasData || !spcData}
+            className="flex items-center gap-2"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Exportar CSV
+          </NeuButton>
           <NeuButton
             variant="primary"
             onClick={handleExportPDF}
@@ -578,6 +739,7 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
                 data={spcData.points}
                 limits={spcData.limits}
                 chartType={chartType}
+                cambiosProceso={cambiosProceso}
               />
             ) : (
               <div
@@ -637,6 +799,18 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
             )}
           </ChartCell>
         </div>
+      )}
+
+      {/* ── CambioProcesoModal ──────────────────────────────────────────────── */}
+      {cambioProcesoOpen && maquinaId && (
+        <CambioProcesoModal
+          maquinaId={maquinaId}
+          onClose={() => setCambioProcesoOpen(false)}
+          onSaved={() => {
+            setCambioProcesoOpen(false);
+            getCambiosByMaquina(maquinaId).then(({ data }) => setCambiosProceso(data));
+          }}
+        />
       )}
     </div>
   );

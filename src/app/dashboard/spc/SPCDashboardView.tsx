@@ -20,12 +20,16 @@ const SPCChart = dynamic(() => import('@/components/charts/SPCChart'), {
   ),
 });
 import OutOfControlModal from '@/components/charts/OutOfControlModal';
+import CambioProcesoModal from '@/components/CambioProcesoModal';
+import { getCambiosByMaquina } from '@/app/dashboard/configuracion/cambios-actions';
+import type { CambioProceso } from '@/app/dashboard/configuracion/cambios-actions';
 import type { OutOfControlDetail } from '@/components/charts/OutOfControlModal';
 import NeuCard from '@/components/ui/NeuCard';
 import NeuButton from '@/components/ui/NeuButton';
 import RecalcularModal from '@/components/RecalcularModal';
 import { isAdminOrAbove } from '@/lib/utils/roles';
 import { formatDateTime, getCpkStatus } from '@/lib/utils/formatters';
+import { exportToCSV } from '@/lib/utils/export';
 import type {
   Linea,
   Maquina,
@@ -34,6 +38,8 @@ import type {
   SPCPoint,
   SPCLimits,
   TipoGrafico,
+  Turno,
+  Caracteristica,
   Rol,
 } from '@/types';
 import type { RecalculoWithUser } from './page';
@@ -421,6 +427,44 @@ export default function SPCDashboardView({
   }>({ open: false, detail: null });
   const [recalcularOpen, setRecalcularOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
+  const [cambioProcesoOpen, setCambioProcesoOpen] = useState(false);
+  const [cambiosProceso, setCambiosProceso] = useState<CambioProceso[]>([]);
+
+  // ── Turno / Caracteristica filters ──────────────────────────────────────────
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [selectedTurnoId, setSelectedTurnoId] = useState('');
+  const [caracteristicas, setCaracteristicas] = useState<Caracteristica[]>([]);
+  const [selectedCaracteristicaId, setSelectedCaracteristicaId] = useState('');
+
+  // Fetch turnos once on mount
+  useEffect(() => {
+    supabase
+      .from('turnos')
+      .select('*')
+      .eq('activo', true)
+      .order('hora_inicio', { ascending: true })
+      .then(({ data }) => {
+        if (data) setTurnos(data as Turno[]);
+      });
+  }, [supabase]);
+
+  // Fetch caracteristicas when machine changes
+  useEffect(() => {
+    setSelectedCaracteristicaId('');
+    if (!selectedMaquinaId) {
+      setCaracteristicas([]);
+      return;
+    }
+    supabase
+      .from('caracteristicas')
+      .select('*')
+      .eq('maquina_id', selectedMaquinaId)
+      .eq('activa', true)
+      .order('orden', { ascending: true })
+      .then(({ data }) => {
+        setCaracteristicas((data as Caracteristica[]) ?? []);
+      });
+  }, [selectedMaquinaId, supabase]);
 
   // ── Filter maquinas by selected linea ────────────────────────────────────────
   const maquinasFiltradas = selectedLineaId
@@ -428,9 +472,32 @@ export default function SPCDashboardView({
     : maquinas;
 
   // ── Real-time piezas ─────────────────────────────────────────────────────────
-  const { piezas, loading: piezasLoading } = useRealtimePiezas(
+  const { piezas: allPiezas, loading: piezasLoading } = useRealtimePiezas(
     selectedMaquinaId || null
   );
+
+  // ── Apply turno / caracteristica filters ─────────────────────────────────────
+  const piezas = useMemo(() => {
+    let result = allPiezas;
+    if (selectedTurnoId) {
+      result = result.filter((p) => p.turno_id === selectedTurnoId);
+    }
+    if (selectedCaracteristicaId) {
+      result = result.filter((p) => p.caracteristica_id === selectedCaracteristicaId);
+    }
+    return result;
+  }, [allPiezas, selectedTurnoId, selectedCaracteristicaId]);
+
+  // ── Fetch cambios de proceso when machine changes ────────────────────────────
+  useEffect(() => {
+    if (!selectedMaquinaId) {
+      setCambiosProceso([]);
+      return;
+    }
+    getCambiosByMaquina(selectedMaquinaId).then(({ data }) => {
+      setCambiosProceso(data);
+    });
+  }, [selectedMaquinaId]);
 
   // ── Fetch spc_config when machine changes ────────────────────────────────────
   useEffect(() => {
@@ -613,6 +680,28 @@ export default function SPCDashboardView({
 
   const selectedMaquina = maquinas.find((m) => m.id === selectedMaquinaId) ?? null;
 
+  // ── Export CSV ───────────────────────────────────────────────────────────────
+  const handleExportCSV = useCallback(() => {
+    if (!activeChart || !selectedMaquina) return;
+    const headers = ['Índice', 'Valor', 'UCL', 'CL', 'LCL', 'Fecha', 'Inspector', 'Regla violada'];
+    const rows = activeChart.points.map((point) => {
+      const pieza = piezas.find((p) => p.id === point.piezaId);
+      return [
+        point.index,
+        point.value,
+        activeChart.limits.ucl,
+        activeChart.limits.cl,
+        activeChart.limits.lcl,
+        point.timestamp ?? '',
+        pieza?.inspector_id ?? '',
+        point.ruleViolated ?? '',
+      ] as (string | number | null)[];
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    const machineName = selectedMaquina.nombre.replace(/\s+/g, '-').toLowerCase();
+    exportToCSV(headers, rows, `spc-${machineName}-${date}`);
+  }, [activeChart, selectedMaquina, piezas]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────────
@@ -677,12 +766,45 @@ export default function SPCDashboardView({
             </label>
             <NeuSelect
               value={selectedMaquinaId}
-              onChange={(id) => setSelectedMaquinaId(id)}
+              onChange={(id) => {
+                setSelectedMaquinaId(id);
+                setSelectedTurnoId('');
+              }}
               placeholder="Seleccionar máquina"
               options={maquinasFiltradas.map((m) => ({ id: m.id, label: m.nombre }))}
               disabled={maquinasFiltradas.length === 0}
             />
           </div>
+
+          {/* Turno filter */}
+          {selectedMaquinaId && turnos.length > 0 && (
+            <div className="flex flex-col gap-1.5 min-w-[180px]">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                Turno
+              </label>
+              <NeuSelect
+                value={selectedTurnoId}
+                onChange={setSelectedTurnoId}
+                placeholder="Todos los turnos"
+                options={turnos.map((t) => ({ id: t.id, label: t.nombre }))}
+              />
+            </div>
+          )}
+
+          {/* Caracteristica filter */}
+          {selectedMaquinaId && caracteristicas.length > 0 && (
+            <div className="flex flex-col gap-1.5 min-w-[180px]">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                Característica
+              </label>
+              <NeuSelect
+                value={selectedCaracteristicaId}
+                onChange={setSelectedCaracteristicaId}
+                placeholder="Todas"
+                options={caracteristicas.map((c) => ({ id: c.id, label: `${c.nombre} (${c.unidad})` }))}
+              />
+            </div>
+          )}
 
           {/* Machine info pill */}
           {selectedMaquina && spcConfig && (
@@ -714,7 +836,10 @@ export default function SPCDashboardView({
                   <span className="inline-block w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse" />
                   <span className="text-xs font-semibold text-[#4CAF50]">EN VIVO</span>
                   <span className="text-xs text-gray-400">
-                    — {piezas.length} puntos
+                    — {piezas.length} punto{piezas.length !== 1 ? 's' : ''}
+                    {(selectedTurnoId || selectedCaracteristicaId) && allPiezas.length !== piezas.length
+                      ? ` (de ${allPiezas.length} total)`
+                      : ''}
                   </span>
                 </>
               )}
@@ -729,6 +854,66 @@ export default function SPCDashboardView({
             >
               Recalcular
             </NeuButton>
+          )}
+
+          {/* Registrar cambio de proceso — admin and above only */}
+          {selectedMaquinaId && isAdminOrAbove(userRol) && (
+            <button
+              onClick={() => setCambioProcesoOpen(true)}
+              className={[
+                'flex items-center gap-2 px-4 py-2.5 rounded-[14px]',
+                'text-sm font-semibold text-gray-600 transition-all duration-150',
+                'shadow-[4px_4px_8px_#b8bec7,_-4px_-4px_8px_#ffffff]',
+                'hover:shadow-[2px_2px_4px_#b8bec7,_-2px_-2px_4px_#ffffff]',
+                'active:shadow-[inset_2px_2px_4px_#b8bec7,_inset_-2px_-2px_4px_#ffffff]',
+              ].join(' ')}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+              Registrar cambio
+            </button>
+          )}
+
+          {/* Exportar CSV button */}
+          {selectedMaquinaId && isSPCTab && activeChart && (
+            <button
+              onClick={handleExportCSV}
+              className={[
+                'flex items-center gap-2 px-4 py-2.5 rounded-[14px]',
+                'text-sm font-semibold text-gray-600 transition-all duration-150',
+                'shadow-[4px_4px_8px_#b8bec7,_-4px_-4px_8px_#ffffff]',
+                'hover:shadow-[2px_2px_4px_#b8bec7,_-2px_-2px_4px_#ffffff]',
+                'active:shadow-[inset_2px_2px_4px_#b8bec7,_inset_-2px_-2px_4px_#ffffff]',
+              ].join(' ')}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Exportar CSV
+            </button>
           )}
         </div>
       </NeuCard>
@@ -874,6 +1059,7 @@ export default function SPCDashboardView({
                       limits={activeChart.limits}
                       chartType={activeChartType}
                       onOutOfControlClick={handleOutOfControlClick}
+                      cambiosProceso={cambiosProceso}
                     />
 
                     {/* Out of control count for this chart type */}
@@ -1286,6 +1472,19 @@ export default function SPCDashboardView({
         onClose={() => setOutOfControlModal({ open: false, detail: null })}
         detail={outOfControlModal.detail}
       />
+
+      {/* ── Cambio de proceso modal ──────────────────────────────────────────── */}
+      {cambioProcesoOpen && selectedMaquinaId && (
+        <CambioProcesoModal
+          maquinaId={selectedMaquinaId}
+          onClose={() => setCambioProcesoOpen(false)}
+          onSaved={() => {
+            getCambiosByMaquina(selectedMaquinaId).then(({ data }) => {
+              setCambiosProceso(data);
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
