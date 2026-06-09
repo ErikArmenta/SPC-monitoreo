@@ -20,15 +20,6 @@ function getServiceClient() {
   )
 }
 
-function getAnonClientWithToken(token: string) {
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  client.auth.setSession({ access_token: token, refresh_token: '' })
-  return client
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/spc/recalcular
 //
@@ -55,16 +46,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado: se requiere token de sesión' }, { status: 401 })
     }
 
-    // Verificar usuario con Supabase usando el token
-    const anonClient = getAnonClientWithToken(token)
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token)
+    // Verificar usuario con Supabase usando el token (service client soporta getUser con JWT)
+    const supabase = getServiceClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado: sesión inválida' }, { status: 401 })
     }
 
     // Fetch profile para verificar rol
-    const supabase = getServiceClient()
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('rol')

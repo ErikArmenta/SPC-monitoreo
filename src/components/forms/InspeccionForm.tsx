@@ -125,22 +125,26 @@ export default function InspeccionForm({
   onError,
 }: InspeccionFormProps) {
   const [codigoPieza, setCodigoPieza] = useState('')
-  const [valorMedido, setValorMedido] = useState('')
+  const [valor1, setValor1] = useState('')
+  const [valor2, setValor2] = useState('')
+  const [valor3, setValor3] = useState('')
+  const [valor4, setValor4] = useState('')
+  const [valor5, setValor5] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const isFormValid = !!selectedMaquinaId && !!codigoPieza.trim() && !!valorMedido
+  const parsedValues = [valor1, valor2, valor3, valor4, valor5].map((v) => parseFloat(v))
+  const allValuesValid = parsedValues.every((v) => !isNaN(v) && v !== undefined)
+  const promedio = allValuesValid
+    ? parsedValues.reduce((acc, v) => acc + v, 0) / 5
+    : null
+
+  const isFormValid = !!selectedMaquinaId && !!codigoPieza.trim() && promedio !== null
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
-      if (!inspectorId || !selectedMaquinaId || !codigoPieza.trim() || !valorMedido) return
-
-      const parsed = parseFloat(valorMedido)
-      if (isNaN(parsed)) {
-        onError?.('El valor medido debe ser un número válido')
-        return
-      }
+      if (!inspectorId || !selectedMaquinaId || !codigoPieza.trim() || promedio === null) return
 
       setSubmitting(true)
       try {
@@ -150,7 +154,8 @@ export default function InspeccionForm({
           body: JSON.stringify({
             maquina_id: selectedMaquinaId,
             codigo_pieza: codigoPieza.trim(),
-            valor_medido: parsed,
+            valor_medido: promedio,
+            valores_individuales: parsedValues,
             inspector_id: inspectorId,
             observaciones: observaciones.trim() || null,
           }),
@@ -170,13 +175,17 @@ export default function InspeccionForm({
 
         // Limpiar campos tras envío exitoso (mantener máquina seleccionada)
         setCodigoPieza('')
-        setValorMedido('')
+        setValor1('')
+        setValor2('')
+        setValor3('')
+        setValor4('')
+        setValor5('')
         setObservaciones('')
       } finally {
         setSubmitting(false)
       }
     },
-    [inspectorId, selectedMaquinaId, codigoPieza, valorMedido, observaciones, onSuccess, onError]
+    [inspectorId, selectedMaquinaId, codigoPieza, promedio, parsedValues, observaciones, onSuccess, onError]
   )
 
   return (
@@ -217,17 +226,77 @@ export default function InspeccionForm({
           />
         </div>
 
-        {/* Valor medido */}
+        {/* 5 campos de medición */}
         <div>
-          <FieldLabel>Valor medido</FieldLabel>
-          <NeuInput
-            type="number"
-            step="any"
-            placeholder="Ej. 12.450"
-            value={valorMedido}
-            onChange={(e) => setValorMedido(e.target.value)}
-            autoComplete="off"
-          />
+          <FieldLabel>Mediciones</FieldLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Medición 1</label>
+              <NeuInput
+                type="number"
+                step="any"
+                placeholder="0.000"
+                value={valor1}
+                onChange={(e) => setValor1(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Medición 2</label>
+              <NeuInput
+                type="number"
+                step="any"
+                placeholder="0.000"
+                value={valor2}
+                onChange={(e) => setValor2(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Medición 3</label>
+              <NeuInput
+                type="number"
+                step="any"
+                placeholder="0.000"
+                value={valor3}
+                onChange={(e) => setValor3(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Medición 4</label>
+              <NeuInput
+                type="number"
+                step="any"
+                placeholder="0.000"
+                value={valor4}
+                onChange={(e) => setValor4(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs text-gray-400 mb-1">Medición 5</label>
+              <NeuInput
+                type="number"
+                step="any"
+                placeholder="0.000"
+                value={valor5}
+                onChange={(e) => setValor5(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {/* Promedio en tiempo real */}
+          <div
+            className="mt-3 px-4 py-3 rounded-[15px] flex items-center justify-between"
+            style={{ boxShadow: 'inset 4px 4px 8px #b8bec7, inset -4px -4px 8px #ffffff' }}
+          >
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Promedio</span>
+            <span className={`text-lg font-bold ${promedio !== null ? 'text-[#1565C0]' : 'text-gray-400'}`}>
+              {promedio !== null ? promedio.toFixed(3) : '—'}
+            </span>
+          </div>
         </div>
 
         {/* Observaciones */}

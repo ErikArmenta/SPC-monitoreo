@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import NeuButton from '@/components/ui/NeuButton'
 import NeuDatePicker from '@/components/ui/NeuDatePicker'
+import { createClient } from '@/lib/supabase/client'
 import type { Pieza, RecalculoComparativa } from '@/types'
 
 // ─── Tabla comparativa anterior vs nuevo ─────────────────────────────────────
@@ -114,9 +115,17 @@ export default function RecalculoForm({ maquinaId, piezasAll, onSuccess, classNa
       if (uslInput.trim() !== '') body.usl = parseFloat(uslInput)
       if (lslInput.trim() !== '') body.lsl = parseFloat(lslInput)
 
+      const { data: sessionData } = await createClient().auth.getSession()
+      if (!sessionData.session) {
+        throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.')
+      }
+
       const res = await fetch('/api/spc/recalcular', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session.access_token}`,
+        },
         body: JSON.stringify(body),
       })
 

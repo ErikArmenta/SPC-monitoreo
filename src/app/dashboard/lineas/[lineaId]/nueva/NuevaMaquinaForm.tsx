@@ -37,13 +37,14 @@ export default function NuevaMaquinaForm({ lineaId }: NuevaMaquinaFormProps) {
       numero: Number(numero),
       linea_id: lineaId,
     });
-    setLoading(false);
 
     if (result.error) {
       setError(result.error);
+      setLoading(false);
       return;
     }
 
+    router.refresh();
     router.push(`/dashboard/lineas/${lineaId}`);
   }
 

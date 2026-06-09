@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Rol } from '@/types';
@@ -165,6 +165,7 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -183,6 +184,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
 
   const handleSignOut = async () => {
     await signOut();
+    router.push('/login');
+    router.refresh();
   };
 
   // ---- Sidebar desktop ----

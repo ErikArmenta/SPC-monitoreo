@@ -30,7 +30,7 @@ function getServiceClient() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { maquina_id, codigo_pieza, valor_medido, inspector_id, observaciones } = body
+    const { maquina_id, codigo_pieza, valor_medido, inspector_id, observaciones, valores_individuales } = body
 
     // Validate required fields
     if (!maquina_id || !codigo_pieza || valor_medido === undefined || valor_medido === null || !inspector_id) {
@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
         observaciones: observaciones?.trim() || null,
         fuera_de_control,
         regla_violada,
+        valores_individuales: valores_individuales ?? null,
       })
       .select()
       .single()

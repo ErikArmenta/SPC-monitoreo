@@ -32,13 +32,14 @@ export default function NuevaLineaPage() {
 
     setLoading(true);
     const result = await createLinea({ nombre: nombre.trim(), numero: numeroInt, activa });
-    setLoading(false);
 
     if (result.error) {
       setError(result.error);
+      setLoading(false);
       return;
     }
 
+    router.refresh();
     router.push('/dashboard');
   }
 
