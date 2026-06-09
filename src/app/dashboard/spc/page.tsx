@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isAdminOrAbove } from '@/lib/utils/roles';
+import { canAccess } from '@/lib/utils/roles';
 import type { Linea, Maquina, SPCRecalculo, Profile, Rol } from '@/types';
 import SPCDashboardView from './SPCDashboardView';
 
@@ -34,7 +34,7 @@ export default async function SPCPage() {
     .eq('id', session.user.id)
     .single();
 
-  if (!profileData || !isAdminOrAbove(profileData.rol)) {
+  if (!profileData || !canAccess(profileData.rol, 'spc_dashboard')) {
     redirect('/dashboard');
   }
 

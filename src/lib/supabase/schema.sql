@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS piezas (
   observaciones     TEXT,
   fuera_de_control  BOOLEAN NOT NULL DEFAULT FALSE,
   regla_violada     TEXT,                             -- regla de Western Electric violada
+  valores_individuales JSONB DEFAULT NULL,            -- arreglo de las 5 mediciones individuales (valor_medido es el promedio)
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

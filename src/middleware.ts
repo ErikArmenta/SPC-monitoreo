@@ -9,7 +9,7 @@ const PROTECTED_PREFIX = '/dashboard'
 const ROLE_RESTRICTED: { path: string; allowedRoles: Rol[] }[] = [
   { path: '/dashboard/usuarios', allowedRoles: ['super_admin'] },
   { path: '/dashboard/captura', allowedRoles: ['inspector'] },
-  { path: '/dashboard/spc', allowedRoles: ['admin', 'super_admin'] },
+  { path: '/dashboard/spc', allowedRoles: ['admin', 'super_admin', 'supervisor'] },
 ]
 
 export async function middleware(request: NextRequest) {

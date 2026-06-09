@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
 import { useRealtimePiezas } from '@/hooks/useRealtimePiezas';
 import {
@@ -10,7 +12,13 @@ import {
   calculateIMR,
 } from '@/lib/spc/calculations';
 import { detectViolations } from '@/lib/spc/western-electric';
-import SPCChart from '@/components/charts/SPCChart';
+
+const SPCChart = dynamic(() => import('@/components/charts/SPCChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 animate-pulse bg-[#e0e5ec] rounded-[16px] shadow-[inset_2px_2px_5px_#b8bec7,inset_-2px_-2px_5px_#ffffff]" />
+  ),
+});
 import OutOfControlModal from '@/components/charts/OutOfControlModal';
 import type { OutOfControlDetail } from '@/components/charts/OutOfControlModal';
 import NeuCard from '@/components/ui/NeuCard';
@@ -543,6 +551,7 @@ export default function SPCDashboardView({
           tiempoCiclo: pieza.tiempo_ciclo,
           reglaViolada: point.ruleViolated,
           observaciones: pieza.observaciones,
+          valoresIndividuales: (pieza as unknown as { valores_individuales?: number[] | null }).valores_individuales ?? null,
         },
       });
 
@@ -612,11 +621,36 @@ export default function SPCDashboardView({
     <div className="p-6 max-w-7xl mx-auto space-y-6">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard SPC Completo</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Análisis estadístico de proceso — X̄-R, X̄-S, I-MR, Cp/Cpk
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard SPC Completo</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Análisis estadístico de proceso — X̄-R, X̄-S, I-MR, Cp/Cpk
+          </p>
+        </div>
+        {(['super_admin', 'admin', 'supervisor'] as Rol[]).includes(userRol) && (
+          <Link
+            href="/dashboard/spc/sixpack"
+            className={[
+              'flex items-center gap-2 px-4 py-2.5 rounded-[14px]',
+              'text-sm font-semibold text-[#1565C0] transition-all duration-150',
+              'shadow-[4px_4px_8px_#b8bec7,_-4px_-4px_8px_#ffffff]',
+              'hover:shadow-[2px_2px_4px_#b8bec7,_-2px_-2px_4px_#ffffff]',
+              'active:shadow-[inset_2px_2px_4px_#b8bec7,_inset_-2px_-2px_4px_#ffffff]',
+              'whitespace-nowrap',
+            ].join(' ')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="8" height="6" rx="1.5" />
+              <rect x="14" y="2" width="8" height="6" rx="1.5" />
+              <rect x="2" y="9" width="8" height="6" rx="1.5" />
+              <rect x="14" y="9" width="8" height="6" rx="1.5" />
+              <rect x="2" y="16" width="8" height="6" rx="1.5" />
+              <rect x="14" y="16" width="8" height="6" rx="1.5" />
+            </svg>
+            Ver Six Pack
+          </Link>
+        )}
       </div>
 
       {/* ── Filters ────────────────────────────────────────────────────────── */}

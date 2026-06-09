@@ -46,7 +46,7 @@ const RESOURCE_ACCESS: Record<Resource, Rol[]> = {
   captura: ['inspector'],
   estadisticas: ['super_admin', 'admin', 'supervisor', 'inspector'],
   spc_dashboard: ['super_admin', 'admin', 'supervisor'],
-  recalcular: ['super_admin', 'admin'],
+  recalcular: ['super_admin', 'admin', 'supervisor'],
   usuarios: ['super_admin'],
   gestion_lineas: ['super_admin', 'admin'],
 };

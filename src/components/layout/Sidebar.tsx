@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { Rol } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,6 +86,19 @@ function IconChevronRight() {
   );
 }
 
+function IconSixPack() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="8" height="6" rx="1.5" />
+      <rect x="14" y="2" width="8" height="6" rx="1.5" />
+      <rect x="2" y="9" width="8" height="6" rx="1.5" />
+      <rect x="14" y="9" width="8" height="6" rx="1.5" />
+      <rect x="2" y="16" width="8" height="6" rx="1.5" />
+      <rect x="14" y="16" width="8" height="6" rx="1.5" />
+    </svg>
+  );
+}
+
 // ============================================================
 // Helpers de presentación
 // ============================================================
@@ -136,6 +149,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['super_admin', 'admin', 'supervisor'],
   },
   {
+    href: '/dashboard/spc/sixpack',
+    label: 'Six Pack',
+    icon: <IconSixPack />,
+    roles: ['super_admin', 'admin', 'supervisor'],
+  },
+  {
     href: '/dashboard/usuarios',
     label: 'Usuarios',
     icon: <IconUsuarios />,
@@ -168,6 +187,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
   const router = useRouter();
   const { profile, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [, startTransition] = useTransition();
 
   const rol: Rol | null = profile?.rol ?? null;
 
@@ -248,7 +268,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
             <Link
               key={item.href}
               href={item.href}
-              onClick={onMobileClose}
+              prefetch={true}
+              onClick={() => { startTransition(() => {}); onMobileClose?.(); }}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-[14px] transition-all duration-150',
                 'text-sm font-medium text-gray-600',

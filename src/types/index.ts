@@ -57,6 +57,7 @@ export interface Pieza {
   observaciones: string | null;
   fuera_de_control: boolean;
   regla_violada: string | null;
+  valores_individuales: number[] | null;
   created_at: string;
 }
 

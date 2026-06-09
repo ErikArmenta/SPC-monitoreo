@@ -16,6 +16,7 @@ export interface OutOfControlDetail {
   tiempoCiclo: number | null;
   reglaViolada: string | null;
   observaciones: string | null;
+  valoresIndividuales: number[] | null;
 }
 
 export interface OutOfControlModalProps {
@@ -180,7 +181,7 @@ export default function OutOfControlModal({ isOpen, onClose, detail }: OutOfCont
           <Row label="Inspector" value={detail.nombreInspector} />
           <Row label="Hora inspección" value={formatHora(detail.horaInspeccion)} />
           <Row
-            label="Valor medido"
+            label="Promedio medido"
             value={
               detail.valorMedido !== null
                 ? detail.valorMedido.toFixed(4)
@@ -200,6 +201,35 @@ export default function OutOfControlModal({ isOpen, onClose, detail }: OutOfCont
             valueClassName="text-gray-500 italic"
           />
         </div>
+
+        {/* Desglose de mediciones individuales */}
+        {detail.valoresIndividuales && detail.valoresIndividuales.length > 0 && (
+          <div
+            className="rounded-[12px] p-3 mb-4"
+            style={{
+              boxShadow: 'inset 2px 2px 5px #b8bec7, inset -2px -2px 5px #ffffff',
+            }}
+          >
+            <p className="text-xs font-semibold text-gray-500 mb-2">Desglose de mediciones</p>
+            <ul className="space-y-0.5">
+              {detail.valoresIndividuales.map((v, i) => (
+                <li key={i} className="font-mono text-xs text-gray-600 flex justify-between">
+                  <span>Medición {i + 1}:</span>
+                  <span>{v.toFixed(4)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-[#d0d6df] mt-2 pt-2 font-mono text-xs flex justify-between">
+              <span className="font-bold text-gray-700">Promedio:</span>
+              <span className="font-bold text-gray-700">
+                {(
+                  detail.valoresIndividuales.reduce((a, b) => a + b, 0) /
+                  detail.valoresIndividuales.length
+                ).toFixed(4)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Botón cerrar */}
         <button

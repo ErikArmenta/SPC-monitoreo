@@ -175,6 +175,11 @@ export default function LoginForm() {
           {submitting ? 'Verificando...' : 'Ingresar'}
         </NeuButton>
       </div>
+
+      {/* Footer */}
+      <p className="mt-6 text-center text-xs text-gray-400">
+        Developed by Engineer Erik Armenta
+      </p>
     </form>
   )
 }

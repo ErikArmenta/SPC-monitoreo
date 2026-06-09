@@ -62,7 +62,7 @@ function yDomain(data: SPCPoint[], limits: SPCLimits): [number, number] {
 // Custom dot — renders differently for out-of-control points
 // ---------------------------------------------------------------------------
 
-function CustomDot(props: {
+const CustomDot = React.memo(function CustomDot(props: {
   cx?: number;
   cy?: number;
   payload?: SPCPoint;
@@ -96,13 +96,13 @@ function CustomDot(props: {
       strokeWidth={1}
     />
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: SPCPoint }> }) {
+const CustomTooltip = React.memo(function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: SPCPoint }> }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
@@ -124,13 +124,13 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
       )}
     </div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function SPCChart({
+function SPCChart({
   data,
   limits,
   chartType,
@@ -304,3 +304,5 @@ export default function SPCChart({
     </div>
   );
 }
+
+export default React.memo(SPCChart);

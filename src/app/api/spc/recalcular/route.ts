@@ -6,7 +6,7 @@ import {
   calculateXBarS,
   calculateIMR,
 } from '@/lib/spc/calculations'
-import { isAdminOrAbove } from '@/lib/utils/roles'
+import { canAccess } from '@/lib/utils/roles'
 import type { Pieza, Rol, SPCConfig } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,9 +65,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se pudo verificar el perfil del usuario' }, { status: 403 })
     }
 
-    if (!isAdminOrAbove(profile.rol as Rol)) {
+    if (!canAccess(profile.rol as Rol, 'recalcular')) {
       return NextResponse.json(
-        { error: 'Acceso denegado: se requiere rol admin o super_admin para recalcular' },
+        { error: 'Acceso denegado: se requiere rol admin, super_admin o supervisor para recalcular' },
         { status: 403 }
       )
     }
