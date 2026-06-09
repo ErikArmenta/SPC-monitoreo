@@ -270,6 +270,7 @@ export default function CapturaPage() {
         tiempoCiclo: null,
         reglaViolada: point.ruleViolated,
         observaciones: null,
+        valoresIndividuales: null,
       })
       setOocModalOpen(true)
     },

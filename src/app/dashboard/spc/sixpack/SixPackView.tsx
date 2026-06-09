@@ -161,7 +161,7 @@ function computeSPC(
     .map((p) => p.valor_medido as number);
   if (values.length === 0) return null;
   try {
-    const { individual, sigmaEstimada } = calculateIMR(values, usl, lsl);
+    const { individuals: individual, sigmaEstimada } = calculateIMR(values, usl, lsl);
     const weLimits = {
       ucl: individual.ucl,
       cl: individual.cl,

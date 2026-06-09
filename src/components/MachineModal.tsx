@@ -320,6 +320,7 @@ function Level2Content({ maquinaId, onViewHistory }: { maquinaId: string; onView
             tiempoCiclo: data.tiempo_ciclo,
             reglaViolada: data.regla_violada ?? point.ruleViolated,
             observaciones: data.observaciones,
+            valoresIndividuales: null,
           });
           setOutOfControlOpen(true);
         }
