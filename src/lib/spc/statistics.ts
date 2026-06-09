@@ -349,7 +349,6 @@ export function buildBoxPlotData(values: number[]): BoxPlotData {
   }
 
   const sorted = [...values].sort((a, b) => a - b);
-  const n = sorted.length;
 
   /**
    * Cuantil usando interpolación lineal (método de tipo 7 de R / numpy).

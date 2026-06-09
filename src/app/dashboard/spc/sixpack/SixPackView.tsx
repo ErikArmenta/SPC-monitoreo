@@ -375,7 +375,6 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgRatio = canvas.width / canvas.height;
-      const pdfRatio = pdfWidth / pdfHeight;
 
       let drawW = pdfWidth - 20;
       let drawH = drawW / imgRatio;
