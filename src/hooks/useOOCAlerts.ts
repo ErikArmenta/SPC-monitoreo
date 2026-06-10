@@ -23,69 +23,91 @@ export function useOOCAlerts(): UseOOCAlerts {
   const [alerts, setAlerts] = useState<OOCAlert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const supabaseRef = useRef(createClient());
+  const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null);
+  // Nombre único para evitar colisiones entre instancias o ejecuciones
+  const channelNameRef = useRef(`ooc-alerts-${Math.random().toString(36).substring(2, 9)}`);
 
   useEffect(() => {
     const supabase = supabaseRef.current;
+    const channelName = channelNameRef.current;
 
-    const channel = supabase
-      .channel('ooc-alerts')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'piezas',
-          filter: 'fuera_de_control=eq.true',
-        },
-        async (payload) => {
-          const pieza = payload.new as {
-            id: string;
-            maquina_id: string;
-            regla_violada: string | null;
-            hora_inspeccion: string;
-          };
+    // Si había un canal previo, lo desuscribimos y removemos
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
-          // Fetch machine and line names for the alert
-          const { data: maquina } = await supabase
-            .from('maquinas')
-            .select('nombre, lineas!inner(nombre)')
-            .eq('id', pieza.maquina_id)
-            .single();
+    // Crear un canal con nombre único
+    const channel = supabase.channel(channelName);
 
-          const maquinaNombre =
-            (maquina as { nombre: string } | null)?.nombre ?? 'Máquina desconocida';
-          const lineaNombre =
-            (maquina as { lineas: { nombre: string } } | null)?.lineas?.nombre ??
-            'Línea desconocida';
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'piezas',
+        filter: 'fuera_de_control=eq.true',
+      },
+      (payload) => {
+        (async () => {
+          try {
+            const pieza = payload.new as {
+              id: string;
+              maquina_id: string;
+              regla_violada: string | null;
+              hora_inspeccion: string;
+            };
 
-          const newAlert: OOCAlert = {
-            id: pieza.id,
-            maquina_id: pieza.maquina_id,
-            maquinaNombre,
-            lineaNombre,
-            ruleViolated: pieza.regla_violada,
-            timestamp: pieza.hora_inspeccion,
-          };
+            const { data: maquina, error } = await supabase
+              .from('maquinas')
+              .select('nombre, lineas!inner(nombre)')
+              .eq('id', pieza.maquina_id)
+              .single();
 
-          setAlerts((prev) => [newAlert, ...prev]);
-          setUnreadCount((prev) => prev + 1);
+            if (error) throw error;
 
-          // Emit custom event so other components (e.g. toast) can react
-          window.dispatchEvent(
-            new CustomEvent('ooc-alert', { detail: newAlert })
-          );
-        }
-      )
-      .subscribe();
+            const newAlert: OOCAlert = {
+              id: pieza.id,
+              maquina_id: pieza.maquina_id,
+              maquinaNombre: maquina?.nombre ?? 'Máquina desconocida',
+              lineaNombre: maquina?.lineas?.nombre ?? 'Línea desconocida',
+              ruleViolated: pieza.regla_violada,
+              timestamp: pieza.hora_inspeccion,
+            };
+
+            setAlerts((prev) => [newAlert, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+
+            window.dispatchEvent(
+              new CustomEvent('ooc-alert', { detail: newAlert })
+            );
+          } catch (err) {
+            console.error('Error procesando alerta OOC:', err);
+          }
+        })();
+      }
+    );
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`Conectado a canal ${channelName}`);
+      }
+    });
+
+    channelRef.current = channel;
 
     return () => {
-      supabase.removeChannel(channel);
+      // Desuscribir y luego remover el canal
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, []);
 
-  const markAllRead = () => {
-    setUnreadCount(0);
-  };
+  const markAllRead = () => setUnreadCount(0);
 
   const clearAlert = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
