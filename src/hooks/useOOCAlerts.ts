@@ -59,19 +59,24 @@ export function useOOCAlerts(): UseOOCAlerts {
               hora_inspeccion: string;
             };
 
+            // Consulta corregida: obtener la máquina y la línea relacionada sin usar !inner
             const { data: maquina, error } = await supabase
               .from('maquinas')
-              .select('nombre, lineas!inner(nombre)')
+              .select('nombre, lineas(nombre)')
               .eq('id', pieza.maquina_id)
               .single();
 
             if (error) throw error;
 
+            // Extraer el nombre de la línea desde el array (porque la relación devuelve un array)
+            const lineasArray = maquina?.lineas as { nombre: string }[] | undefined;
+            const lineaNombre = lineasArray && lineasArray.length > 0 ? lineasArray[0].nombre : 'Línea desconocida';
+
             const newAlert: OOCAlert = {
               id: pieza.id,
               maquina_id: pieza.maquina_id,
               maquinaNombre: maquina?.nombre ?? 'Máquina desconocida',
-              lineaNombre: maquina?.lineas?.nombre ?? 'Línea desconocida',
+              lineaNombre: lineaNombre,
               ruleViolated: pieza.regla_violada,
               timestamp: pieza.hora_inspeccion,
             };
