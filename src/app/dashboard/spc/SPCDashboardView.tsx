@@ -529,23 +529,35 @@ export default function SPCDashboardView({
   const usl = spcConfig?.usl ?? null;
   const lsl = spcConfig?.lsl ?? null;
 
-  const xbarRChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeXBarR(piezas, n, usl, lsl) : null),
+  const xbarRChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeXBarR(piezas, n, usl, lsl);
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+    }
+    return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, n, usl, lsl]
-  );
+  }, [piezas, spcConfig, n, usl, lsl]);
 
-  const xbarSChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeXBarS(piezas, n, usl, lsl) : null),
+  const xbarSChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeXBarS(piezas, n, usl, lsl);
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+    }
+    return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, n, usl, lsl]
-  );
+  }, [piezas, spcConfig, n, usl, lsl]);
 
-  const imrChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeIMR(piezas, usl, lsl) : null),
+  const imrChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeIMR(piezas, usl, lsl);
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+    }
+    return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, usl, lsl]
-  );
+  }, [piezas, spcConfig, usl, lsl]);
 
   // ── All out-of-control points (combined across chart types) ──────────────────
   const allOutOfControlPoints = useMemo<
@@ -1459,9 +1471,9 @@ export default function SPCDashboardView({
         onClose={() => setRecalcularOpen(false)}
         maquinaId={selectedMaquinaId}
         piezas={piezas}
-        onSuccess={() => {
+        onSuccess={(nuevo) => {
           setRecalcularOpen(false);
-          setSpcConfig(null);
+          setSpcConfig((prev) => prev ? { ...prev, ucl: nuevo.ucl, cl: nuevo.cl, lcl: nuevo.lcl, cp: nuevo.cp, cpk: nuevo.cpk } : prev);
           setConfigVersion((v) => v + 1);
         }}
       />

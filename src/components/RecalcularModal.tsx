@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import NeuCard from '@/components/ui/NeuCard';
 import NeuButton from '@/components/ui/NeuButton';
 import NeuInput from '@/components/ui/NeuInput';
-import NeuDatePicker from '@/components/ui/NeuDatePicker';
 import type { Pieza } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,7 +16,7 @@ interface Props {
   onClose: () => void;
   maquinaId: string;
   piezas: Pieza[];
-  onSuccess: () => void;
+  onSuccess: (nuevo: { ucl: number; cl: number; lcl: number; cp: number | null; cpk: number | null }) => void;
 }
 
 interface DateRange {
@@ -190,7 +189,7 @@ export default function RecalcularModal({
 
   const handleClose = () => {
     if (result) {
-      onSuccess();
+      onSuccess(result.nuevo);
     }
     onClose();
     // Reset state for next open
@@ -239,7 +238,28 @@ export default function RecalcularModal({
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             Rango de fechas
           </p>
-          <NeuDatePicker value={dateRange} onChange={setDateRange} />
+          <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-1.5 min-w-[150px] flex-1">
+              <label className="text-xs text-gray-500">Desde</label>
+              <input
+                type="date"
+                value={dateRange.startDate}
+                max={dateRange.endDate || undefined}
+                onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                className="w-full bg-[#e0e5ec] rounded-[12px] px-3 py-2 text-sm text-gray-700 shadow-[inset_3px_3px_6px_#b8bec7,_inset_-3px_-3px_6px_#ffffff] outline-none focus:ring-2 focus:ring-[#1565C0]/20 transition-shadow duration-150 cursor-pointer"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 min-w-[150px] flex-1">
+              <label className="text-xs text-gray-500">Hasta</label>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                min={dateRange.startDate || undefined}
+                onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                className="w-full bg-[#e0e5ec] rounded-[12px] px-3 py-2 text-sm text-gray-700 shadow-[inset_3px_3px_6px_#b8bec7,_inset_-3px_-3px_6px_#ffffff] outline-none focus:ring-2 focus:ring-[#1565C0]/20 transition-shadow duration-150 cursor-pointer"
+              />
+            </div>
+          </div>
         </div>
 
         {/* ── Puntos a excluir ────────────────────────────────────── */}
