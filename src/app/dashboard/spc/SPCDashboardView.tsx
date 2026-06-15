@@ -50,11 +50,13 @@ import type { RecalculoWithUser } from './page';
 
 type SPCTabType = TipoGrafico | 'fuera_control' | 'historial' | 'comparativa';
 
+// ========================== CORRECCIÓN AQUÍ ==========================
 interface ComputedChart {
   limits: SPCLimits;
-  points: SPCPoint[];
-  sigmaEstimada: number;
+  points?: SPCPoint[];      // ← se vuelve opcional
+  sigmaEstimada?: number;   // ← se vuelve opcional
 }
+// =====================================================================
 
 interface ComparativaItem {
   maquina: Maquina;
@@ -533,7 +535,7 @@ export default function SPCDashboardView({
   const xbarRChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeXBarR(piezas, n, usl, lsl);
-    if (!result) return null; // <-- AÑADIDO: evita spread sobre null
+    if (!result) return null;
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
       return {
         ...result,
@@ -553,7 +555,7 @@ export default function SPCDashboardView({
   const xbarSChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeXBarS(piezas, n, usl, lsl);
-    if (!result) return null; // <-- AÑADIDO
+    if (!result) return null;
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
       return {
         ...result,
@@ -573,7 +575,7 @@ export default function SPCDashboardView({
   const imrChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeIMR(piezas, usl, lsl);
-    if (!result) return null; // <-- AÑADIDO
+    if (!result) return null;
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
       return {
         ...result,
