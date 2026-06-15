@@ -529,35 +529,67 @@ export default function SPCDashboardView({
   const usl = spcConfig?.usl ?? null;
   const lsl = spcConfig?.lsl ?? null;
 
+  // =============================== CORRECCIÓN ===============================
   const xbarRChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeXBarR(piezas, n, usl, lsl);
+    if (!result) return null; // <-- AÑADIDO: evita spread sobre null
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
-      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
     }
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piezas, spcConfig, n, usl, lsl]);
 
   const xbarSChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeXBarS(piezas, n, usl, lsl);
+    if (!result) return null; // <-- AÑADIDO
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
-      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
     }
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piezas, spcConfig, n, usl, lsl]);
 
   const imrChart = useMemo<ComputedChart | null>(() => {
     if (!(piezas.length > 0 && spcConfig)) return null;
     const result = computeIMR(piezas, usl, lsl);
+    if (!result) return null; // <-- AÑADIDO
     if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
-      return { ...result, limits: { ...result.limits, ucl: spcConfig.ucl, cl: spcConfig.cl, lcl: spcConfig.lcl, cp: spcConfig.cp ?? result.limits.cp, cpk: spcConfig.cpk ?? result.limits.cpk } };
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
     }
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piezas, spcConfig, usl, lsl]);
+  // =======================================================================
 
   // ── All out-of-control points (combined across chart types) ──────────────────
   const allOutOfControlPoints = useMemo<
