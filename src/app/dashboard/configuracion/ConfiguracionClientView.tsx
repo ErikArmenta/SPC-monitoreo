@@ -318,6 +318,7 @@ export default function ConfiguracionClientView({ configs }: Props) {
   // ── Modal ──────────────────────────────────────────────────────
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingConfig, setEditingConfig] = useState<SPCConfig | null>(null);
+  const [initialMaquinaId, setInitialMaquinaId] = useState<string | undefined>(undefined);
 
   // ── Panel expansible de características ───────────────────────
   const [expandedMaquinaId, setExpandedMaquinaId] = useState<string | null>(null);
@@ -439,6 +440,7 @@ export default function ConfiguracionClientView({ configs }: Props) {
 
   const openCreate = () => {
     setEditingConfig(null);
+    setInitialMaquinaId(undefined);
     setFormMode('create');
   };
 
@@ -446,11 +448,13 @@ export default function ConfiguracionClientView({ configs }: Props) {
     const config = getConfig(maquina);
     if (config) {
       setEditingConfig(config);
+      setInitialMaquinaId(maquina.id);
       setFormMode('edit');
     } else {
       // No tiene config — abrir en modo create pero pre-seleccionando la máquina
       // Se re-usa el form de create que ya tiene el dropdown
       setEditingConfig(null);
+      setInitialMaquinaId(maquina.id);
       setFormMode('create');
     }
   };
@@ -846,6 +850,7 @@ export default function ConfiguracionClientView({ configs }: Props) {
         <SPCConfigForm
           mode={formMode}
           config={editingConfig ?? undefined}
+          initialMaquinaId={initialMaquinaId}
           maquinasSinConfig={maquinasSinConfig}
           onClose={handleFormClose}
           onSaved={handleFormSaved}
