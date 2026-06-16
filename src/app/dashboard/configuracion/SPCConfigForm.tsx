@@ -29,6 +29,7 @@ interface ReglaWE {
 interface Props {
   mode: 'create' | 'edit';
   config?: SPCConfig;
+  initialMaquinaId?: string;
   maquinasSinConfig: MaquinaConConfig[];
   onClose: () => void;
   onSaved: () => void;
@@ -211,13 +212,14 @@ function fmtNum(n: number | null | undefined): string {
 export default function SPCConfigForm({
   mode,
   config,
+  initialMaquinaId,
   maquinasSinConfig,
   onClose,
   onSaved,
 }: Props) {
   // ── Estado del formulario ──────────────────────────────────────
   const [selectedMaquinaId, setSelectedMaquinaId] = useState(
-    mode === 'edit' ? (config?.maquina_id ?? '') : ''
+    mode === 'edit' ? (config?.maquina_id ?? '') : (initialMaquinaId ?? '')
   );
   const [tipoGrafico, setTipoGrafico] = useState<TipoGrafico>(
     config?.tipo_grafico ?? 'i_mr'
