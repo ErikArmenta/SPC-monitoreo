@@ -332,10 +332,10 @@ export default function SixPackView({ lineas, maquinas }: SixPackViewProps) {
           .lte('hora_inspeccion', end)
           .order('hora_inspeccion', { ascending: true }),
         supabase
-          .from('spc_configs')
+          .from('spc_config')
           .select('*')
           .eq('maquina_id', maquinaId)
-          .single(),
+          .maybeSingle(),
       ]);
 
       setAllPiezas(piezasRes.data ?? []);
