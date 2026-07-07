@@ -52,8 +52,8 @@ type SPCTabType = TipoGrafico | 'fuera_control' | 'historial' | 'comparativa';
 
 interface ComputedChart {
   limits: SPCLimits;
-  points: SPCPoint[];
-  sigmaEstimada: number;
+  points?: SPCPoint[];
+  sigmaEstimada?: number;
 }
 
 interface ComparativaItem {
@@ -541,44 +541,77 @@ export default function SPCDashboardView({
   const usl = spcConfig?.usl ?? null;
   const lsl = spcConfig?.lsl ?? null;
 
-  const xbarRChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeXBarR(piezas, n, usl, lsl) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, n, usl, lsl]
-  );
+  const xbarRChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeXBarR(piezas, n, usl, lsl);
+    if (!result) return null;
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
+    }
+    return result;
+  }, [piezas, spcConfig, n, usl, lsl]);
 
-  const xbarSChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeXBarS(piezas, n, usl, lsl) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, n, usl, lsl]
-  );
+  const xbarSChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeXBarS(piezas, n, usl, lsl);
+    if (!result) return null;
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
+    }
+    return result;
+  }, [piezas, spcConfig, n, usl, lsl]);
 
-  const imrChart = useMemo<ComputedChart | null>(
-    () => (piezas.length > 0 && spcConfig ? computeIMR(piezas, usl, lsl) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [piezas, spcConfig, usl, lsl]
-  );
+  const imrChart = useMemo<ComputedChart | null>(() => {
+    if (!(piezas.length > 0 && spcConfig)) return null;
+    const result = computeIMR(piezas, usl, lsl);
+    if (!result) return null;
+    if (spcConfig.ucl !== null && spcConfig.cl !== null && spcConfig.lcl !== null) {
+      return {
+        ...result,
+        limits: {
+          ...result.limits,
+          ucl: spcConfig.ucl,
+          cl: spcConfig.cl,
+          lcl: spcConfig.lcl,
+          cp: spcConfig.cp ?? result.limits.cp,
+          cpk: spcConfig.cpk ?? result.limits.cpk,
+        },
+      };
+    }
+    return result;
+  }, [piezas, spcConfig, usl, lsl]);
 
   // ── All out-of-control points (combined across chart types) ──────────────────
-  const allOutOfControlPoints = useMemo<
-    { point: SPCPoint; chartType: TipoGrafico }[]
-  >(() => {
+  const allOutOfControlPoints = useMemo<{ point: SPCPoint; chartType: TipoGrafico }[]>(() => {
     const results: { point: SPCPoint; chartType: TipoGrafico }[] = [];
-    if (xbarRChart) {
-      xbarRChart.points
-        .filter((p) => p.isOutOfControl)
-        .forEach((p) => results.push({ point: p, chartType: 'xbar_r' }));
-    }
-    if (xbarSChart) {
-      xbarSChart.points
-        .filter((p) => p.isOutOfControl)
-        .forEach((p) => results.push({ point: p, chartType: 'xbar_s' }));
-    }
-    if (imrChart) {
-      imrChart.points
-        .filter((p) => p.isOutOfControl)
-        .forEach((p) => results.push({ point: p, chartType: 'i_mr' }));
-    }
+    const xbarPoints = xbarRChart?.points ?? [];
+    const xbarSPoints = xbarSChart?.points ?? [];
+    const imrPoints = imrChart?.points ?? [];
+
+    xbarPoints.filter(p => p.isOutOfControl).forEach(p => results.push({ point: p, chartType: 'xbar_r' }));
+    xbarSPoints.filter(p => p.isOutOfControl).forEach(p => results.push({ point: p, chartType: 'xbar_s' }));
+    imrPoints.filter(p => p.isOutOfControl).forEach(p => results.push({ point: p, chartType: 'i_mr' }));
+
     return results;
   }, [xbarRChart, xbarSChart, imrChart]);
 
@@ -677,10 +710,10 @@ export default function SPCDashboardView({
     activeTab === 'xbar_r'
       ? xbarRChart
       : activeTab === 'xbar_s'
-      ? xbarSChart
-      : activeTab === 'i_mr'
-      ? imrChart
-      : null;
+        ? xbarSChart
+        : activeTab === 'i_mr'
+          ? imrChart
+          : null;
 
   const activeChartType: TipoGrafico =
     activeTab === 'xbar_r' ? 'xbar_r' : activeTab === 'xbar_s' ? 'xbar_s' : 'i_mr';
@@ -695,8 +728,9 @@ export default function SPCDashboardView({
   // ── Export CSV ───────────────────────────────────────────────────────────────
   const handleExportCSV = useCallback(() => {
     if (!activeChart || !selectedMaquina) return;
+    const points = activeChart.points ?? [];
     const headers = ['Índice', 'Valor', 'UCL', 'CL', 'LCL', 'Fecha', 'Inspector', 'Regla violada'];
-    const rows = activeChart.points.map((point) => {
+    const rows = points.map((point) => {
       const pieza = piezas.find((p) => p.id === point.piezaId);
       return [
         point.index,
@@ -1060,14 +1094,14 @@ export default function SPCDashboardView({
                       >
                         <span className="text-xs text-gray-400">σ estimada</span>
                         <span className="text-xs font-bold text-gray-700 tabular-nums">
-                          {activeChart.sigmaEstimada.toFixed(4)}
+                          {activeChart.sigmaEstimada?.toFixed(4) ?? '—'}
                         </span>
                       </div>
                     </div>
 
                     {/* Chart */}
                     <SPCChart
-                      data={activeChart.points}
+                      data={activeChart.points ?? []}
                       limits={activeChart.limits}
                       chartType={activeChartType}
                       onOutOfControlClick={handleOutOfControlClick}
@@ -1075,7 +1109,7 @@ export default function SPCDashboardView({
                     />
 
                     {/* Out of control count for this chart type */}
-                    {activeChart.points.filter((p) => p.isOutOfControl).length > 0 && (
+                    {(activeChart.points ?? []).filter((p) => p.isOutOfControl).length > 0 && (
                       <div
                         className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-[12px]"
                         style={{
@@ -1086,8 +1120,8 @@ export default function SPCDashboardView({
                       >
                         <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#F44336]" />
                         <span className="text-sm font-semibold text-[#F44336]">
-                          {activeChart.points.filter((p) => p.isOutOfControl).length} punto
-                          {activeChart.points.filter((p) => p.isOutOfControl).length !== 1
+                          {(activeChart.points ?? []).filter((p) => p.isOutOfControl).length} punto
+                          {(activeChart.points ?? []).filter((p) => p.isOutOfControl).length !== 1
                             ? 's'
                             : ''}{' '}
                           fuera de control en este gráfico
@@ -1103,11 +1137,10 @@ export default function SPCDashboardView({
                     message={
                       !spcConfig
                         ? 'Esta máquina no tiene configuración SPC aún.'
-                        : `Se necesitan al menos ${
-                            activeTab === 'i_mr'
-                              ? '2 valores individuales'
-                              : `${n} puntos para formar 1 subgrupo`
-                          } para calcular este gráfico.`
+                        : `Se necesitan al menos ${activeTab === 'i_mr'
+                          ? '2 valores individuales'
+                          : `${n} puntos para formar 1 subgrupo`
+                        } para calcular este gráfico.`
                     }
                   />
                 )}
@@ -1335,10 +1368,10 @@ export default function SPCDashboardView({
                         cpkStatus === 'capable'
                           ? '#4CAF50'
                           : cpkStatus === 'marginal'
-                          ? '#FF9800'
-                          : cpkStatus === 'incapable'
-                          ? '#F44336'
-                          : '#9ca3af';
+                            ? '#FF9800'
+                            : cpkStatus === 'incapable'
+                              ? '#F44336'
+                              : '#9ca3af';
 
                       return (
                         <div
@@ -1465,15 +1498,26 @@ export default function SPCDashboardView({
         </NeuCard>
       )}
 
+
       {/* ── Recalcular modal ────────────────────────────────────────────────── */}
       <RecalcularModal
         isOpen={recalcularOpen}
         onClose={() => setRecalcularOpen(false)}
         maquinaId={selectedMaquinaId}
         piezas={piezas}
-        onSuccess={() => {
+        onSuccess={(nuevo) => {
           setRecalcularOpen(false);
-          setSpcConfig(null);
+          setSpcConfig((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              ucl: nuevo.ucl ?? prev.ucl,
+              cl: nuevo.cl ?? prev.cl,
+              lcl: nuevo.lcl ?? prev.lcl,
+              cp: (nuevo.cp ?? null) as number | null,
+              cpk: (nuevo.cpk ?? null) as number | null,
+            };
+          });
           setConfigVersion((v) => v + 1);
         }}
       />
@@ -1528,8 +1572,8 @@ function RecalcDelta({
           color: !changed
             ? '#6b7280'
             : increased
-            ? '#F44336'
-            : '#4CAF50',
+              ? '#F44336'
+              : '#4CAF50',
           fontWeight: changed ? 600 : 400,
         }}
       >
