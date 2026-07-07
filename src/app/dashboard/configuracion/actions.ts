@@ -52,14 +52,36 @@ export async function getSPCConfigs(): Promise<{
 }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data: maquinas, error: maqError } = await supabase
     .from('maquinas')
-    .select('*, lineas!inner(nombre), spc_config(*)')
+    .select('*, lineas!inner(nombre)')
     .order('nombre', { ascending: true });
 
-  if (error) return { error: error.message };
+  if (maqError) return { error: maqError.message };
+  if (!maquinas || maquinas.length === 0) return { data: [] };
 
-  return { data: data as MaquinaConConfig[] };
+  const ids = maquinas.map((m) => m.id as string);
+
+  const { data: configs, error: cfgError } = await supabase
+    .from('spc_config')
+    .select('*')
+    .in('maquina_id', ids);
+
+  if (cfgError) return { error: cfgError.message };
+
+  const configsByMaquinaId = new Map<string, SPCConfig[]>();
+  for (const cfg of configs ?? []) {
+    const key = cfg.maquina_id as string;
+    if (!configsByMaquinaId.has(key)) configsByMaquinaId.set(key, []);
+    configsByMaquinaId.get(key)!.push(cfg as SPCConfig);
+  }
+
+  const result: MaquinaConConfig[] = maquinas.map((m) => ({
+    ...(m as Maquina & { lineas: { nombre: string } }),
+    spc_config: configsByMaquinaId.get(m.id as string) ?? [],
+  }));
+
+  return { data: result };
 }
 
 // ============================================================
@@ -70,16 +92,10 @@ export async function getMaquinasSinConfig(): Promise<{
   data?: MaquinaConConfig[];
   error?: string;
 }> {
-  const supabase = await createClient();
+  const result = await getSPCConfigs();
+  if (result.error) return { error: result.error };
 
-  const { data, error } = await supabase
-    .from('maquinas')
-    .select('*, lineas!inner(nombre), spc_config(*)')
-    .order('nombre', { ascending: true });
-
-  if (error) return { error: error.message };
-
-  const sinConfig = (data as MaquinaConConfig[]).filter(
+  const sinConfig = (result.data ?? []).filter(
     (m) => !m.spc_config || m.spc_config.length === 0
   );
 
