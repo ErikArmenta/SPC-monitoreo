@@ -17,7 +17,13 @@ export interface RecalculoWithUser extends SPCRecalculo {
 // Page (server component)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default async function SPCPage() {
+export default async function SPCPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ maquina_id?: string }>;
+}) {
+  const params = await searchParams;
+  const initialMaquinaId = params.maquina_id ?? '';
   const supabase = await createClient();
 
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -109,6 +115,7 @@ export default async function SPCPage() {
       maquinas={maquinas}
       recalculos={recalculosWithUser}
       userRol={profileData.rol as Rol}
+      initialMaquinaId={initialMaquinaId}
     />
   );
 }
