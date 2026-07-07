@@ -15,27 +15,45 @@ interface NeuDatePickerProps {
   className?: string;
 }
 
+interface PopoverPos {
+  top: number;
+  right: number;
+}
+
 export default function NeuDatePicker({
   value,
   onChange,
   className,
 }: NeuDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [popoverPos, setPopoverPos] = useState<PopoverPos>({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const insideButton = buttonRef.current?.contains(target);
+      const insidePopover = popoverRef.current?.contains(target);
+      if (!insideButton && !insidePopover) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
+
+  const handleToggle = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPopoverPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setIsOpen((prev) => !prev);
+  };
 
   const handleStartDate = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({ ...value, startDate: e.target.value });
@@ -53,11 +71,12 @@ export default function NeuDatePicker({
       : "Filtrar por fecha";
 
   return (
-    <div ref={containerRef} className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block", className)}>
       {/* Calendar toggle button */}
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         className={cn(
           "flex items-center gap-2 bg-[#e0e5ec] rounded-[15px] px-4 py-2.5",
           "text-sm text-gray-600 font-medium",
@@ -76,8 +95,14 @@ export default function NeuDatePicker({
       {/* Floating popover */}
       {isOpen && (
         <div
+          ref={popoverRef}
+          style={{
+            position: "fixed",
+            top: popoverPos.top,
+            right: popoverPos.right,
+            zIndex: 9999,
+          }}
           className={cn(
-            "absolute z-40 top-full mt-2 right-0",
             "bg-[#e0e5ec] rounded-[20px] p-5 w-72",
             "shadow-[8px_8px_16px_#b8bec7,_-8px_-8px_16px_#ffffff]"
           )}
