@@ -78,7 +78,7 @@ function ChartSection({
   maquinaNombre: string
   onOutOfControlClick: (point: SPCPoint) => void
 }) {
-  const { spcPoints, limits, spcConfig, loading, error } = useSPCData(maquinaId)
+  const { spcPoints, limits, spcConfig, piezas, loading, error } = useSPCData(maquinaId)
 
   if (!maquinaId) return null
 
@@ -129,8 +129,19 @@ function ChartSection({
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
-          <p className="text-sm text-gray-400">Sin datos suficientes para graficar</p>
-          <p className="text-xs text-gray-400">Envía inspecciones para ver la gráfica de control</p>
+          {spcConfig.tipo_grafico === 'i_mr' ? (
+            <>
+              <p className="text-sm text-gray-400">Sin datos suficientes para graficar</p>
+              <p className="text-xs text-gray-400">Se necesitan mínimo 2 piezas para el gráfico I-MR</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400">
+                Se han capturado {piezas.length} de {spcConfig.tamano_subgrupo} piezas necesarias para el primer punto del gráfico
+              </p>
+              <p className="text-xs text-gray-400">Envía más inspecciones para ver la gráfica de control</p>
+            </>
+          )}
         </div>
       ) : (
         <>
