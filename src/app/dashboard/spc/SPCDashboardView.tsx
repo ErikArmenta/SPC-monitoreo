@@ -66,6 +66,7 @@ export interface SPCDashboardViewProps {
   maquinas: Maquina[];
   recalculos: RecalculoWithUser[];
   userRol: Rol;
+  initialMaquinaId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -412,11 +413,22 @@ export default function SPCDashboardView({
   maquinas,
   recalculos,
   userRol,
+  initialMaquinaId = '',
 }: SPCDashboardViewProps) {
   const supabase = useRef(createClient()).current;
 
   const [selectedLineaId, setSelectedLineaId] = useState('');
-  const [selectedMaquinaId, setSelectedMaquinaId] = useState('');
+  const [selectedMaquinaId, setSelectedMaquinaId] = useState(initialMaquinaId);
+
+  useEffect(() => {
+    if (initialMaquinaId && maquinas.length > 0) {
+      const maquina = maquinas.find((m) => m.id === initialMaquinaId);
+      if (maquina) {
+        setSelectedLineaId(maquina.linea_id);
+        setSelectedMaquinaId(initialMaquinaId);
+      }
+    }
+  }, [initialMaquinaId, maquinas]);
   const [activeTab, setActiveTab] = useState<SPCTabType>('xbar_r');
   const [spcConfig, setSpcConfig] = useState<SPCConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
