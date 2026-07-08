@@ -49,7 +49,8 @@ function formatTimestamp(ts: string): string {
 
 function yDomain(data: SPCPoint[], limits: SPCLimits): [number, number] {
   const sigma = (limits.ucl - limits.cl) / 3;
-  const padding = sigma * 1.5;
+  const minPadding = sigma > 0 ? sigma * 1.5 : Math.abs(limits.cl) * 0.1 || 1;
+  const padding = Math.max(sigma * 1.5, minPadding);
   const allValues = data.map((d) => d.value);
   const minVal = allValues.length ? Math.min(...allValues) : limits.lcl;
   const maxVal = allValues.length ? Math.max(...allValues) : limits.ucl;
