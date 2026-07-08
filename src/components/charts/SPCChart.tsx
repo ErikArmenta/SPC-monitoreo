@@ -95,6 +95,7 @@ const CustomDot = React.memo(function CustomDot(props: {
       fill="#1565C0"
       stroke="#0D47A1"
       strokeWidth={1}
+      pointerEvents="none"
     />
   );
 });
