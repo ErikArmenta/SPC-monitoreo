@@ -73,22 +73,27 @@ Al entrar, ves el formulario de inspeccion con los siguientes campos:
 - Dropdown con las caracteristicas de medicion de la maquina (por ejemplo: "Diametro exterior (mm)").
 - Selecciona la caracteristica que estas midiendo.
 
-**Turno** (detectado automaticamente)
-- El sistema detecta el turno activo segun la hora actual. No necesitas seleccionarlo manualmente.
+**Turno detectado** (solo lectura, automatico)
+- El sistema detecta el turno activo segun la hora actual y lo muestra en un campo de solo lectura.
+- Si no hay turnos configurados, aparece "Sin turno configurado" — el administrador debe crearlos en `/dashboard/configuracion/turnos`.
 - El turno detectado se asigna automaticamente a la inspeccion que envias.
 
 **Codigo de pieza** (obligatorio)
-- Ingresa el numero o codigo de la pieza que inspeccionaste (por ejemplo: "P-2024-001").
+- Ingresa el numero o codigo de la pieza que inspeccionaste (por ejemplo: "PZ83").
 
-**Valor 1, Valor 2, Valor 3, Valor 4, Valor 5** (los 5 son obligatorios)
-- Ingresa las 5 mediciones individuales tomadas de la misma pieza.
-- El sistema calcula el promedio automaticamente (no necesitas calcularlo).
+**Mediciones 1 a 5** (las 5 son obligatorias)
+- Ingresa las 5 mediciones individuales tomadas de la misma pieza (campo "Medicion 1" hasta "Medicion 5").
 - Usa punto decimal, no coma (ejemplo: `10.35` no `10,35`).
+
+**Promedio** (calculado en tiempo real)
+- Aparece debajo de los 5 campos de medicion. Se actualiza automaticamente a medida que ingresas valores.
+- El sistema envia este promedio como el valor de la inspeccion. No necesitas calcularlo.
+- Mientras alguna medicion este vacia o invalida, el promedio muestra "—".
 
 **Observaciones** (opcional)
 - Campo de texto libre para notas relevantes (por ejemplo: "Pieza con rebaba en borde").
 
-Al terminar, haz clic en **Enviar inspeccion**.
+Al terminar, haz clic en **Enviar Inspeccion**.
 
 - Si la inspeccion se envio correctamente, aparece un aviso verde: "Inspeccion enviada correctamente".
 - Si el punto quedara fuera de control estadistico, aparece un aviso rojo con la regla Western Electric violada.
@@ -232,15 +237,27 @@ Analisis estadistico completo de una maquina con 6 graficas simultaneas.
 
 Vista de resumen de produccion con graficas de inspeccion.
 
-**Filtros disponibles:**
-- Linea, Maquina, Turno.
-- Selector de fecha (NeuDatePicker).
+**Comportamiento por defecto:**
+- Sin filtros aplicados, muestra los datos de **hoy** (dia actual). Para ver otros periodos, usar el filtro de fecha.
 
-**Contenido:**
-- Tarjetas de KPIs: totales de inspecciones y otros contadores.
-- Grafica de dona (distribucion por categoria).
-- Grafica de barras por hora del dia (distribucion horaria de inspecciones).
-- Boton **Exportar CSV** para descargar los datos filtrados.
+**Filtros disponibles:**
+- **Linea:** Filtra por linea de produccion. Al cambiar la linea se limpia la maquina seleccionada.
+- **Maquina:** Lista de maquinas activas (filtrada por linea si se selecciono una).
+- **Turno:** Filtra por turno de produccion.
+- **Periodo:** Selector de fecha con rango inicio/fin (NeuDatePicker).
+- **Limpiar filtros:** Boton que aparece cuando hay algun filtro activo. Restablece todos los filtros de un clic.
+
+**Tarjetas de KPI (siempre visibles):**
+- **Lineas activas:** Numero total de lineas de produccion activas en el sistema.
+- **Maquinas activas:** Numero total de maquinas activas en el sistema.
+
+**Graficas (aparecen solo si hay datos en el periodo filtrado):**
+- **Distribucion OK / No OK:** Grafica de dona con el conteo de piezas aprobadas (OK) vs. rechazadas (No OK).
+- **Inspecciones por hora:** Grafica de barras con las inspecciones distribuidas por hora del dia, separadas en OK y No OK.
+- Si no hay datos en el periodo seleccionado, aparece el mensaje "No hay inspecciones en el periodo seleccionado".
+
+**Boton Exportar CSV:**
+- Descarga un CSV con: resumen de filtros aplicados (linea, maquina, turno, periodo, totales OK/No OK/porcentaje) seguido del detalle hora a hora.
 
 ---
 
