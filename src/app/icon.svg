@@ -1,0 +1,43 @@
+<svg
+  width="96"
+  height="108"
+  viewBox="0 0 96 108"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Hexágono exterior (sombra suave) -->
+  <polygon
+    points="48,4 92,28 92,80 48,104 4,80 4,28"
+    fill="#0d4a8f"
+    opacity="0.25"
+    transform="translate(2, 2)"
+  />
+  <!-- Hexágono principal -->
+  <polygon
+    points="48,4 92,28 92,80 48,104 4,80 4,28"
+    fill="#1565C0"
+  />
+  <!-- Icono: gráfica de control estilizada -->
+  <polyline
+    points="22,68 34,52 44,60 56,38 66,46 76,30"
+    stroke="white"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+    opacity="0.9"
+  />
+  <!-- Línea central (CL) -->
+  <line
+    x1="22"
+    y1="54"
+    x2="76"
+    y2="54"
+    stroke="white"
+    stroke-width="1.5"
+    stroke-dasharray="4 3"
+    opacity="0.5"
+  />
+  <!-- Punto fuera de control (rojo) -->
+  <circle cx="56" cy="38" r="4" fill="#F44336" opacity="0.95" />
+</svg>
