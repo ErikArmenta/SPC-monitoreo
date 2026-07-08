@@ -301,7 +301,7 @@ function SPCChart({
                 />
               );
             }}
-            activeDot={{ r: 6, fill: '#1565C0', stroke: '#0D47A1' }}
+            activeDot={{ r: 8, fill: '#1565C0', stroke: '#0D47A1', strokeWidth: 2 }}
           />
 
           {/* ── Cambios de proceso ───────────────────────────────── */}
